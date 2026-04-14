@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'monitor_page.dart';
 import 'approval_page.dart';
-import 'profile_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -16,7 +15,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<Widget> pages = [
     const MonitorPage(),
     const ApprovalPage(),
-    const ProfilePage(),
   ];
 
   @override
@@ -32,7 +30,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: "Monitor"),
           BottomNavigationBarItem(icon: Icon(Icons.how_to_reg_outlined), label: "Approval"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
         ],
       ),
     );
