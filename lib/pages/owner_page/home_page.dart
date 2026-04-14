@@ -19,10 +19,34 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   int totalProfit = 0;
   List kosList = [];
 
+  // Controllers dideklarasikan di sini
+  late TextEditingController _nameCtrl;
+  late TextEditingController _priceCtrl;
+  late TextEditingController _rulesCtrl;
+  late TextEditingController _addressCtrl;
+  late TextEditingController _descCtrl;
+
   @override
   void initState() {
     super.initState();
+    // Inisialisasi controller di initState agar lebih aman
+    _nameCtrl = TextEditingController();
+    _priceCtrl = TextEditingController();
+    _rulesCtrl = TextEditingController();
+    _addressCtrl = TextEditingController();
+    _descCtrl = TextEditingController();
     fetchDashboard();
+  }
+
+  @override
+  void dispose() {
+    // WAJIB: Bersihkan memori saat page ditutup
+    _nameCtrl.dispose();
+    _priceCtrl.dispose();
+    _rulesCtrl.dispose();
+    _addressCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> fetchDashboard() async {
@@ -71,9 +95,108 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     }
   }
 
+  Future<void> _updateKost(Map oldData, bool newListrik, bool newAir, bool newWifi) async {
+    List<String> changes = [];
+
+    // Deteksi perubahan untuk pesan reminder
+    if (oldData['include_electricity'] != newListrik) {
+      changes.add(newListrik ? "Mulai tmsk listrik" : "Tdk tmsk listrik");
+    }
+    if (oldData['include_water'] != newAir) {
+      changes.add(newAir ? "Mulai tmsk air" : "Tdk tmsk air");
+    }
+    if (oldData['include_wifi'] != newWifi) {
+      changes.add(newWifi ? "Mulai tmsk WiFi" : "Tdk tmsk WiFi");
+    }
+    if (oldData['price'].toString() != _priceCtrl.text) {
+      changes.add("Harga ganti ke Rp ${_priceCtrl.text}");
+    }
+
+    try {
+      // 1. Update data utama
+      await supabase.from('kosts').update({
+        'name': _nameCtrl.text.trim(),
+        'price': int.tryParse(_priceCtrl.text) ?? 0,
+        'rules': _rulesCtrl.text.trim(),
+        'address': _addressCtrl.text.trim(),
+        'include_electricity': newListrik,
+        'include_water': newAir,
+        'include_wifi': newWifi,
+      }).eq('id', oldData['id']);
+
+      // 2. Kirim ke tabel reminders milikmu
+      if (changes.isNotEmpty) {
+        String pesanLog = "Update ${oldData['name']}: ${changes.join(', ')}";
+        await supabase.from('reminders').insert({
+          'user_id': supabase.auth.currentUser?.id,
+          'title': 'Edit Fasilitas Kos',
+          'description': pesanLog,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Tutup dialog edit
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Berhasil Update & Catat di Reminders"), backgroundColor: Colors.green)
+        );
+        fetchDashboard(); // Refresh UI
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+    }
+  }
+
+  void _showEditDialog(Map kos) {
+    // Set data awal ke controller
+    _nameCtrl.text = kos['name'] ?? '';
+    _priceCtrl.text = (kos['price'] ?? 0).toString();
+    _rulesCtrl.text = kos['rules'] ?? '';
+    _addressCtrl.text = kos['address'] ?? '';
+    _descCtrl.text = kos['description'] ?? '';
+
+    bool editListrik = kos['include_electricity'] == true;
+    bool editAir = kos['include_water'] == true;
+    bool editWifi = kos['include_wifi'] == true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Edit Informasi Unit", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF9C5A1A))),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildField(_nameCtrl, "Nama Kos", Icons.home),
+                _buildField(_priceCtrl, "Harga/Bulan", Icons.payments, isNumber: true),
+                const Divider(),
+                _buildEditToggle("Include Listrik", editListrik, (v) => setModalState(() => editListrik = v)),
+                _buildEditToggle("Include Air", editAir, (v) => setModalState(() => editAir = v)),
+                _buildEditToggle("Include WiFi", editWifi, (v) => setModalState(() => editWifi = v)),
+                const Divider(),
+                _buildField(_rulesCtrl, "Peraturan", Icons.gavel, maxLines: 2),
+                _buildField(_addressCtrl, "Alamat", Icons.location_on, maxLines: 2),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white),
+              onPressed: () => _updateKost(kos, editListrik, editAir, editWifi),
+              child: const Text("Simpan"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)));
 
     return SafeArea(
       child: RefreshIndicator(
@@ -98,6 +221,134 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             ...kosList.map((kos) => _kosCard(kos)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _kosCard(Map kos) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        onTap: () => _showDetailDialog(kos),
+        contentPadding: const EdgeInsets.all(16),
+        leading: const CircleAvatar(backgroundColor: Color(0xFF9C5A1A), child: Icon(Icons.home, color: Colors.white)),
+        title: Text(kos['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(currency.format(kos['price'] ?? 0)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      ),
+    );
+  }
+
+  void _showDetailDialog(Map kos) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(kos['name'] ?? 'Detail Kos', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF9C5A1A))),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade300)),
+                child: Column(
+                  children: [
+                    const Text("KODE MASUK PENGHUNI", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                    Text(kos['join_code'] ?? "NO CODE", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 15),
+              _buildPopupDetail(Icons.location_on, "Alamat", kos['address']),
+              _buildPopupDetail(Icons.payments, "Harga", currency.format(kos['price'] ?? 0)),
+              const Divider(),
+              _buildReadOnlySwitch("WiFi", kos['include_wifi'] == true),
+              _buildReadOnlySwitch("Listrik", kos['include_electricity'] == true),
+              _buildReadOnlySwitch("Air", kos['include_water'] == true),
+              const Divider(),
+              _buildPopupDetail(Icons.gavel, "Peraturan", kos['rules'] ?? 'Tidak ada peraturan khusus'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Tutup")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+              _showEditDialog(kos);
+            },
+            child: const Text("Edit Data"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- REUSABLE COMPONENTS ---
+
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: const Color(0xFF9C5A1A), size: 20),
+          filled: true,
+          fillColor: const Color(0xFFF5F0EA),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditToggle(String label, bool value, Function(bool) onChanged) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 14)),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeTrackColor: const Color(0xFF9C5A1A),
+          activeColor: Colors.white,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadOnlySwitch(String label, bool value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 14)),
+        Switch(
+          value: value,
+          onChanged: null, // Read-only
+          activeTrackColor: const Color(0xFF9C5A1A),
+          activeColor: Colors.white,
+          inactiveTrackColor: Colors.grey.shade200,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPopupDetail(IconData icon, String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [Icon(icon, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold))]),
+          const SizedBox(height: 4),
+          Container(width: double.infinity, padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF2E8DA), borderRadius: BorderRadius.circular(8)), child: Text(value ?? '-', style: const TextStyle(fontSize: 13))),
+        ],
       ),
     );
   }
@@ -138,115 +389,4 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       ),
     );
   }
-
-//eh ini buat nampilin detail kos pas card kos di klik, biar ga cuman list doang
-Widget _kosCard(Map kos) {
-  void _showDetailDialog() {
-    // Buat format rupiah khusus buat di pop-up biar cakep
-    final priceFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(kos['name'] ?? 'Detail Kos', 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF4A2C0A))),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Alamat
-              _buildPopupDetail(Icons.location_on, "Alamat", kos['address'] ?? '-'),
-              const Divider(),
-              
-              // Harga
-              _buildPopupDetail(Icons.payments, "Harga/Bulan", priceFormatter.format(kos['price'] ?? 0)),
-              const SizedBox(height: 10),
-
-              // Status Listrik & Air (Pake SwitchListTile dummy biar mirip form input)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Termasuk Listrik", style: TextStyle(fontSize: 14)),
-                value: kos['include_listrik'] == true, 
-                onChanged: null, // null berarti read-only (gabisa diubah)
-                activeThumbColor: const Color(0xFF9C5A1A),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text("Termasuk Air", style: TextStyle(fontSize: 14)),
-                value: kos['include_air'] == true, 
-                onChanged: null, 
-                activeThumbColor: const Color(0xFF9C5A1A),
-              ),
-              
-              const Divider(),
-              // Fasilitas/Deskripsi
-              _buildPopupDetail(Icons.description, "Fasilitas & Deskripsi", kos['description'] ?? '-'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Tutup", style: TextStyle(color: Color(0xFF9C5A1A))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  //card utama kos (ingatin kocak)
-  return Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: ListTile(
-      onTap: _showDetailDialog, // <--- SEKARANG JIKA DITEKAN, POP-UP MUNCUL!
-      contentPadding: const EdgeInsets.all(16),
-      leading: const CircleAvatar(
-        backgroundColor: Color(0xFF9C5A1A), 
-        child: Icon(Icons.home, color: Colors.white)
-      ),
-      title: Text(kos['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text("Rp ${kos['price'] ?? '-'} / bulan"),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-    ),
-  );
 }
-
-  Widget _buildPopupDetail(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: Colors.grey),
-              const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2E8DA), // Warna background input biar mirip form
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          ),
-        ],
-      ),
-    );
-  }
-  }

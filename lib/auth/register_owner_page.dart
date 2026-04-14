@@ -92,7 +92,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // Background Cream konsisten
+      backgroundColor: const Color(0xFFF2E8DA),
       appBar: AppBar(
         title: const Text("Daftar Owner", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
