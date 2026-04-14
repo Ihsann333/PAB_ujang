@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/supabase_service.dart';
+import '../services/supabase_service.dart';
 import 'dart:math';
 
 class RegisterOwnerPage extends StatefulWidget {
