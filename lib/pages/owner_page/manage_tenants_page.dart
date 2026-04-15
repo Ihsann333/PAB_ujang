@@ -88,6 +88,9 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                   itemBuilder: (context, index) {
                     final t = tenants[index];
                     final bool isRequesting = t['exit_request'] ?? false;
+                    final String tenantName = (t['full_name']?.toString().trim().isNotEmpty ?? false)
+                        ? t['full_name'].toString().trim()
+                        : (t['email']?.toString().split('@')[0] ?? 'User');
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -97,7 +100,7 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                           backgroundColor: isRequesting ? Colors.orange : const Color(0xFF9C5A1A),
                           child: const Icon(Icons.person, color: Colors.white),
                         ),
-                        title: Text(t['email']?.split('@')[0] ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(tenantName, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(isRequesting ? "⚠️ Ingin keluar kos" : "Status: Aktif"),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -106,7 +109,7 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                               IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () => handleUserExit(t['id'], isApproved: true)),
                               IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () => handleUserExit(t['id'], isApproved: false)),
                             ] else
-                              IconButton(icon: const Icon(Icons.person_remove, color: Colors.redAccent), onPressed: () => _showKickConfirm(t['id'], t['email'])),
+                              IconButton(icon: const Icon(Icons.person_remove, color: Colors.redAccent), onPressed: () => _showKickConfirm(t['id'], tenantName)),
                           ],
                         ),
                       ),
@@ -116,12 +119,12 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
     );
   }
 
-  void _showKickConfirm(String userId, String? email) {
+  void _showKickConfirm(String userId, String? tenantName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Kick Penghuni?"),
-        content: Text("Keluarkan ${email ?? 'user'} sekarang?"),
+        content: Text("Keluarkan ${tenantName ?? 'user'} sekarang?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
           ElevatedButton(

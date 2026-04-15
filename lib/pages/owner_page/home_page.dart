@@ -73,17 +73,26 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
       int penghuniCount = 0;
       int profit = 0;
+      final List<Map<String, dynamic>> kosWithStats = [];
 
       for (int i = 0; i < results.length; i++) {
         final List tenantsInKos = results[i] as List;
         final int harga = (kos[i]['price'] as num?)?.toInt() ?? 0;
+        final int activeTenants = tenantsInKos.length;
+        final int monthlyProfit = harga * activeTenants;
+
+        final Map<String, dynamic> currentKos = Map<String, dynamic>.from(kos[i] as Map);
+        currentKos['active_tenants'] = activeTenants;
+        currentKos['monthly_profit'] = monthlyProfit;
+        kosWithStats.add(currentKos);
+
         penghuniCount += tenantsInKos.length;
-        profit += harga * tenantsInKos.length;
+        profit += monthlyProfit;
       }
 
       if (mounted) {
         setState(() {
-          kosList = kos;
+          kosList = kosWithStats;
           totalKos = kos.length;
           totalPenghuni = penghuniCount;
           totalProfit = profit;
@@ -226,6 +235,10 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   }
 
   Widget _kosCard(Map kos) {
+    final int activeTenants = (kos['active_tenants'] as num?)?.toInt() ?? 0;
+    final int monthlyProfit = (kos['monthly_profit'] as num?)?.toInt() ?? 0;
+    final int totalKamar = (kos['slots'] as num?)?.toInt() ?? 0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -234,7 +247,17 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
         contentPadding: const EdgeInsets.all(16),
         leading: const CircleAvatar(backgroundColor: Color(0xFF9C5A1A), child: Icon(Icons.home, color: Colors.white)),
         title: Text(kos['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(currency.format(kos['price'] ?? 0)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(currency.format(kos['price'] ?? 0)),
+            const SizedBox(height: 4),
+            Text("Total Kamar: $totalKamar", style: const TextStyle(fontSize: 12)),
+            Text("Penghuni Aktif: $activeTenants", style: const TextStyle(fontSize: 12)),
+            Text("Profit/Bulan: ${currency.format(monthlyProfit)}", style: const TextStyle(fontSize: 12)),
+          ],
+        ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
     );

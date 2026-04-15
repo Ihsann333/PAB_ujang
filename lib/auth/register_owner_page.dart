@@ -11,6 +11,8 @@ class RegisterOwnerPage extends StatefulWidget {
 
 class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   final _formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final namaKosController = TextEditingController();
@@ -62,6 +64,8 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       // 2. Insert Profile
       await supabase.from('profiles').insert({
         'id': user.id,
+        'full_name': nameController.text.trim(),
+        'phone_number': phoneController.text.trim(),
         'email': emailController.text.trim(),
         'role': 'owner',
         'is_approved': false,
@@ -116,6 +120,8 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _sectionTitle("Informasi Akun"),
+                  _inputField("Nama Pengguna", nameController, Icons.person),
+                  _inputField("Nomor Pengguna", phoneController, Icons.phone, isPhone: true),
                   _inputField("Email", emailController, Icons.email, isEmail: true),
                   _inputField("Password", passwordController, Icons.lock, isPassword: true),
                   
@@ -181,14 +187,16 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   }
 
   Widget _inputField(String label, TextEditingController controller, IconData icon, 
-      {bool isPassword = false, bool isEmail = false, bool isNumber = false, int maxLines = 1}) {
+      {bool isPassword = false, bool isEmail = false, bool isNumber = false, bool isPhone = false, int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         obscureText: isPassword,
         maxLines: maxLines,
-        keyboardType: isNumber ? TextInputType.number : (isEmail ? TextInputType.emailAddress : TextInputType.text),
+        keyboardType: isNumber
+            ? TextInputType.number
+            : (isPhone ? TextInputType.phone : (isEmail ? TextInputType.emailAddress : TextInputType.text)),
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, size: 20, color: const Color(0xFF9C5A1A)),
@@ -200,9 +208,26 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
           if (value == null || value.isEmpty) return "Wajib diisi";
           if (isEmail && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return "Email tidak valid";
           if (isNumber && int.tryParse(value) == null) return "Harus berupa angka";
+          if (isPhone) {
+            final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+            if (cleaned.length < 10 || cleaned.length > 15) return "Nomor pengguna tidak valid";
+          }
           return null;
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    namaKosController.dispose();
+    hargaController.dispose();
+    rulesController.dispose();
+    slotController.dispose();
+    super.dispose();
   }
 }

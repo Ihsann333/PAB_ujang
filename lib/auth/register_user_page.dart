@@ -9,6 +9,8 @@ class RegisterUserPage extends StatefulWidget {
 }
 
 class _RegisterUserPageState extends State<RegisterUserPage> {
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final supabase = SupabaseService.client;
@@ -47,6 +49,8 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       // 2. Masukkan ke table profiles
       await supabase.from('profiles').insert({
         'id': user.id,
+        'full_name': nameController.text.trim(),
+        'phone_number': phoneController.text.trim(),
         'email': emailController.text.trim(),
         'role': 'user',
         'is_approved': true,
@@ -101,6 +105,30 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                   const Text("Lengkapi data untuk membuat akun",
                       style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 32),
+
+                  TextFormField(
+                    controller: nameController,
+                    decoration: _inputDecoration("Nama Pengguna"),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return "Nama pengguna tidak boleh kosong";
+                      if (value.trim().length < 3) return "Nama pengguna minimal 3 karakter";
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: _inputDecoration("Nomor Pengguna"),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return "Nomor pengguna tidak boleh kosong";
+                      final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+                      if (cleaned.length < 10 || cleaned.length > 15) return "Nomor pengguna tidak valid";
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
 
                   // Input Email dengan Validasi Karakter
                   TextFormField(
@@ -176,5 +204,14 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 }
