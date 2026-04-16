@@ -17,7 +17,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   final TextEditingController _addressCtrl = TextEditingController();
   final TextEditingController _priceCtrl = TextEditingController();
   final TextEditingController _slotsCtrl = TextEditingController();
-  final TextEditingController _descCtrl = TextEditingController();
+  final TextEditingController _rulesCtrl = TextEditingController();
 
   bool isSaving = false;
   bool _includeListrik = false;
@@ -92,7 +92,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                   onChanged: (val) => setModalState(() => _includeWifi = val),
                 ),
                 const SizedBox(height: 12),
-                _buildField(_descCtrl, "Deskripsi kos", Icons.description, "AC, WiFi, dll", maxLines: 3),
+                _buildField(_rulesCtrl, "Aturan Kos", Icons.description, "AC, WiFi, dll", maxLines: 3),
               ],
             ),
           ),
@@ -157,18 +157,16 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       bool inserted = false;
       Object? lastError;
 
-      // Coba dengan kolom description (jika ada di skema)
       try {
         await supabase.from('kosts').insert({
           ...basePayload,
-          'description': _descCtrl.text.trim(),
+          'rules': _rulesCtrl.text.trim(),
         });
         inserted = true;
       } catch (e) {
         lastError = e;
       }
 
-      // Fallback tanpa description (untuk skema yang belum punya kolom ini)
       if (!inserted) {
         try {
           await supabase.from('kosts').insert(basePayload);
@@ -192,7 +190,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       _addressCtrl.clear();
       _priceCtrl.clear();
       _slotsCtrl.clear();
-      _descCtrl.clear();
+      _rulesCtrl.clear();
       setState(() {
         _includeListrik = false;
         _includeAir = false;
@@ -272,7 +270,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     _addressCtrl.dispose();
     _priceCtrl.dispose();
     _slotsCtrl.dispose();
-    _descCtrl.dispose();
+    _rulesCtrl.dispose();
     super.dispose();
   }
 }
