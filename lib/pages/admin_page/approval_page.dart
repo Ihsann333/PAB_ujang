@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:intl/intl.dart';
 
 class ApprovalPage extends StatefulWidget {
   final VoidCallback? onBack;
@@ -202,256 +203,349 @@ class _ApprovalPageState extends State<ApprovalPage> {
     return ok == true;
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     if (isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
+      backgroundColor: const Color(0xFFFDF7F0), // Warna background lebih lembut
       appBar: AppBar(
-        title: const Text("Approval Owner", style: TextStyle(fontWeight: FontWeight.w800)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black,
-        leading: widget.onBack != null ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack) : null,
+        title: const Text("Approval Owner", 
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        foregroundColor: const Color(0xFF4A3428),
+        leading: widget.onBack != null ? IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: widget.onBack) : null,
       ),
       body: owners.isEmpty
-          ? const Center(child: Text("Tidak ada antrean approval"))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined, size: 64, color: Colors.brown.withOpacity(0.3)),
+                  const SizedBox(height: 16),
+                  const Text("Tidak ada antrean approval", style: TextStyle(color: Colors.brown, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: owners.length,
               itemBuilder: (context, i) {
                 final item = owners[i];
                 final List listKos = item['kosts'] ?? [];
                 final String ownerId = item['id'].toString();
                 final bool profilePending = item['is_approved'] == false;
-                final bool isApprovingOwner = approvingOwnerIds.contains(ownerId);
-                final bool isRejectingOwner = rejectingOwnerIds.contains(ownerId);
-                return Card(
-                  color: const Color(0xFFFFFCF7),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  margin: const EdgeInsets.only(bottom: 15),
-                  child: ExpansionTile(
-                    tilePadding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    title: Text(item['email'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          listKos.isNotEmpty ? "${listKos.length} Kost menunggu persetujuan" : "Menunggu verifikasi akun",
-                          style: const TextStyle(color: Color(0xFF6B6257), fontSize: 13),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: profilePending ? const Color(0xFFFFE9CC) : const Color(0xFFE7F5EA),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            profilePending ? "Owner Pending" : "Owner Aktif",
-                            style: TextStyle(
-                              color: profilePending ? const Color(0xFF9C5A1A) : const Color(0xFF2F8F46),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.brown.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      )
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: ExpansionTile(
+                      backgroundColor: Colors.white,
+                      collapsedBackgroundColor: Colors.white,
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      iconColor: const Color(0xFF9C5A1A),
+                      title: Text(
+                      item ['full_name'] ?? item['email'] ?? 'Tanpa Nama', 
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: Color(0xFF4A3428))
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['email'] ?? '-',
+                              style: TextStyle(
+                                fontSize: 13, 
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                _buildStatusChip(
+                                  profilePending ? "Owner Pending" : "Owner Aktif",
+                                  profilePending ? const Color(0xFFFFE9CC) : const Color(0xFFE7F5EA),
+                                  profilePending ? const Color(0xFF9C5A1A) : const Color(0xFF2F8F46),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    listKos.isNotEmpty ? "• ${listKos.length} Unit Kos" : "• Verifikasi Akun",
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
+                      ),
+                      children: [
+                        const Divider(height: 30),
+                        if (profilePending) ...[
+                          _buildActionButtons(
+                            context: context,
+                            onApprove: () => handleApproveOwner(ownerId),
+                            onReject: () async {
+                              final ok = await _confirmReject("Tolak Owner", "Owner akan ditolak dan unit kos miliknya dihapus.");
+                              if (ok) handleRejectOwner(ownerId);
+                            },
+                            isApproving: approvingOwnerIds.contains(ownerId),
+                            isRejecting: rejectingOwnerIds.contains(ownerId),
+                            approveLabel: "APPROVE OWNER",
+                            rejectLabel: "TOLAK",
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                        if (listKos.isNotEmpty) ...[
+                          const Row(
+                            children: [
+                              Icon(Icons.home_work_outlined, size: 18, color: Color(0xFF9C5A1A)),
+                              SizedBox(width: 8),
+                              Text("DETAIL UNIT KOS", 
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Color(0xFF9C5A1A))),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ...listKos.map((k) {
+                            final String kostId = k['id'].toString();
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFDFCFB),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFF0E5D8)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(k['name'] ?? 'Nama Kost', 
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Expanded(child: Text(k['address'] ?? 'Alamat tidak diisi', 
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      _buildTinyChip(Icons.flash_on, k['include_electricity'] == true ? "Listrik" : "No Listrik"),
+                                      _buildTinyChip(Icons.water_drop, k['include_water'] == true ? "Air" : "No Air"),
+                                      _buildTinyChip(Icons.wifi, k['include_wifi'] == true ? "WiFi" : "No WiFi"),
+                                      _buildTinyChip(Icons.king_bed, "${k['slots'] ?? 0} Kamar"),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Rp ${NumberFormat.decimalPattern('id').format(k['price'] ?? 0)}",
+                                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF2F8F46), fontSize: 15),
+                                      ),
+                                      const Text("/ Bulan", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildActionButtons(
+                                    context: context,
+                                    onApprove: () => handleApproveKost(kostId),
+                                    onReject: () async {
+                                      final ok = await _confirmReject("Tolak Kos", "Kos ini akan dihapus dari antrean.");
+                                      if (ok) handleRejectKost(kostId);
+                                    },
+                                    isApproving: approvingKostIds.contains(kostId),
+                                    isRejecting: rejectingKostIds.contains(kostId),
+                                    approveLabel: "APPROVE KOS",
+                                    rejectLabel: "TOLAK",
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ] else if (!profilePending)
+                          const Text("Tidak ada unit yang perlu di-approve", 
+                            style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 13)),
                       ],
                     ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (profilePending)
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF9C5A1A),
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                        icon: isApprovingOwner
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                              )
-                                            : const Icon(Icons.verified_user),
-                                        label: Text(isApprovingOwner ? "MEMPROSES..." : "APPROVE OWNER"),
-                                        onPressed: (isApprovingOwner || isRejectingOwner)
-                                            ? null
-                                            : () => handleApproveOwner(ownerId),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.redAccent,
-                                          side: const BorderSide(color: Colors.redAccent),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                        icon: isRejectingOwner
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
-                                              )
-                                            : const Icon(Icons.close),
-                                        label: Text(isRejectingOwner ? "MEMPROSES..." : "TOLAK OWNER"),
-                                        onPressed: (isApprovingOwner || isRejectingOwner)
-                                            ? null
-                                            : () async {
-                                                final ok = await _confirmReject(
-                                                  "Tolak Owner",
-                                                  "Owner akan ditolak dan unit kos pending miliknya dihapus. Lanjutkan?",
-                                                );
-                                                if (ok) handleRejectOwner(ownerId);
-                                              },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              if (profilePending) const SizedBox(height: 14),
-                              if (listKos.isNotEmpty) ...[
-                                const Text("Detail Fasilitas & Kost:", 
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF9C5A1A))),
-                                const Divider(),
-                                ...listKos.map((k) {
-                                  final String kostId = k['id'].toString();
-                                  final bool isApprovingKost = approvingKostIds.contains(kostId);
-                                  final bool isRejectingKost = rejectingKostIds.contains(kostId);
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8F2E8),
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: const Color(0xFFEADBC9)),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(k['name'] ?? 'Nama Kost', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                                        const SizedBox(height: 5),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                                            const SizedBox(width: 5),
-                                            Expanded(child: Text(k['address'] ?? 'Alamat tidak diisi', style: const TextStyle(fontSize: 12))),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          children: [
-                                            _buildChip(Icons.flash_on, k['include_electricity'] == true ? "Termasuk Listrik" : "Listrik Sendiri"),
-                                            _buildChip(Icons.water_drop, k['include_water'] == true ? "Termasuk Air" : "Air Sendiri"),
-                                            _buildChip(Icons.wifi, k['include_wifi'] == true ? "Ada WiFi" : "No WiFi"),
-                                            _buildChip(Icons.king_bed, "${k['slots'] ?? 0} Kamar"),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text("Harga: Rp ${k['price']} / Bulan", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                                        const SizedBox(height: 10),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: ElevatedButton.icon(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: const Color(0xFF9C5A1A),
-                                                  foregroundColor: Colors.white,
-                                                  padding: const EdgeInsets.symmetric(vertical: 11),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                ),
-                                                icon: isApprovingKost
-                                                    ? const SizedBox(
-                                                        width: 16,
-                                                        height: 16,
-                                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                                      )
-                                                    : const Icon(Icons.check_circle),
-                                                label: Text(isApprovingKost ? "MEMPROSES..." : "APPROVE KOS INI"),
-                                                onPressed: (isApprovingKost || isRejectingKost) ? null : () => handleApproveKost(kostId),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: OutlinedButton.icon(
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor: Colors.redAccent,
-                                                  side: const BorderSide(color: Colors.redAccent),
-                                                  padding: const EdgeInsets.symmetric(vertical: 11),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                ),
-                                                icon: isRejectingKost
-                                                    ? const SizedBox(
-                                                        width: 16,
-                                                        height: 16,
-                                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
-                                                      )
-                                                    : const Icon(Icons.close),
-                                                label: Text(isRejectingKost ? "MEMPROSES..." : "TOLAK KOS INI"),
-                                                onPressed: (isApprovingKost || isRejectingKost)
-                                                    ? null
-                                                    : () async {
-                                                        final ok = await _confirmReject(
-                                                          "Tolak Kos",
-                                                          "Kos ini akan dihapus dari antrean pendaftaran. Lanjutkan?",
-                                                        );
-                                                        if (ok) handleRejectKost(kostId);
-                                                      },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ],
-                              if (!profilePending && listKos.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 4, bottom: 8),
-                                  child: Text("Tidak ada item yang perlu di-approve"),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                   ),
                 );
               },
             ),
     );
   }
-}
 
-Widget _buildChip(IconData icon, String label) {
+Widget _buildAdminHeader() {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     decoration: BoxDecoration(
-      color: const Color(0xFF9C5A1A).withAlpha(25),
-      borderRadius: BorderRadius.circular(8),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24), // Sudut melengkung halus
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     ),
     child: Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF9C5A1A)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+        // Avatar Lingkaran dengan Inisial 'A'
+        Container(
+          width: 45,
+          height: 45,
+          decoration: const BoxDecoration(
+            color: Color(0xFF9C5A1A), // Warna cokelat sesuai gambar
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            "A",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Informasi Teks
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Administrator",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Text(
+                "admin@gmail.com",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF4A3428),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Tombol Logout Power
+        IconButton(
+          onPressed: () {
+            // Tambahkan logika logout di sini
+          },
+          icon: const Icon(
+            Icons.power_settings_new_rounded,
+            color: Colors.redAccent,
+            size: 24,
+          ),
+        ),
       ],
     ),
   );
+}
+
+Widget _buildActionButtons({
+    required BuildContext context,
+    required VoidCallback onApprove,
+    required VoidCallback onReject,
+    required bool isApproving,
+    required bool isRejecting,
+    required String approveLabel,
+    required String rejectLabel,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C5A1A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: (isApproving || isRejecting) ? null : onApprove,
+            child: isApproving 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(approveLabel, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 1,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.redAccent,
+              side: const BorderSide(color: Color(0xFFFFEBEE)),
+              backgroundColor: const Color(0xFFFFFBFA),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: (isApproving || isRejecting) ? null : onReject,
+            child: isRejecting
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
+              : Text(rejectLabel, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusChip(String label, Color backColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: backColor, borderRadius: BorderRadius.circular(8)),
+      child: Text(label, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w800)),
+    );
+  }
+
+  Widget _buildTinyChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.brown.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.brown[400]),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.brown[700], fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
 }

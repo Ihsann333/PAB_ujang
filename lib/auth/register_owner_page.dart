@@ -20,8 +20,10 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   final rulesController = TextEditingController();
   final slotController = TextEditingController();
 
+  // Tambahkan state untuk wifi
   bool listrik = false;
   bool air = false;
+  bool wifi = false; 
   bool isLoading = false;
 
   final supabase = SupabaseService.client;
@@ -52,7 +54,6 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
     setState(() => isLoading = true);
 
     try {
-      // 1. Auth SignUp
       final res = await supabase.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
@@ -61,7 +62,6 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       final user = res.user;
       if (user == null) throw "Gagal mendaftarkan akun.";
 
-      // 2. Insert Profile
       await supabase.from('profiles').insert({
         'id': user.id,
         'full_name': nameController.text.trim(),
@@ -71,16 +71,18 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'is_approved': false,
       });
 
-      // 3. Insert Data Kos
+      // Menambahkan include_wifi ke insert query
       await supabase.from('kosts').insert({
         'owner_id': user.id,
         'name': namaKosController.text.trim(),
         'price': int.tryParse(hargaController.text.trim()) ?? 0,
         'include_electricity': listrik,
         'include_water': air,
+        'include_wifi': wifi, // Masuk ke kolom database
         'rules': rulesController.text.trim(),
         'slots': int.tryParse(slotController.text.trim()) ?? 0,
         'join_code': generateCode(),
+        'is_approved': false, // Pastikan default false agar diverifikasi admin
       });
 
       _showNotice("Registrasi Berhasil! Menunggu persetujuan admin.");
@@ -140,21 +142,14 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
 
                   const SizedBox(height: 10),
                   const Text("Fasilitas Tambahan:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                  CheckboxListTile(
-                    title: const Text("Listrik Include", style: TextStyle(fontSize: 13)),
-                    value: listrik,
-                    onChanged: (v) => setState(() => listrik = v!),
-                    activeColor: const Color(0xFF9C5A1A),
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                  CheckboxListTile(
-                    title: const Text("Air Include", style: TextStyle(fontSize: 13)),
-                    value: air,
-                    onChanged: (v) => setState(() => air = v!),
-                    activeColor: const Color(0xFF9C5A1A),
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
+                  
+                  // Mengatur checkbox dalam Wrap agar lebih rapi
+                  Wrap(
+                    children: [
+                      _buildCheckbox("Listrik Include", listrik, (v) => setState(() => listrik = v!)),
+                      _buildCheckbox("Air Include", air, (v) => setState(() => air = v!)),
+                      _buildCheckbox("WiFi Include", wifi, (v) => setState(() => wifi = v!)),
+                    ],
                   ),
 
                   const SizedBox(height: 30),
@@ -175,6 +170,22 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Widget pembantu untuk Checkbox agar tidak berulang kodenya
+  Widget _buildCheckbox(String title, bool value, Function(bool?) onChanged) {
+    return SizedBox(
+      width: 180, // Ukuran lebar agar bisa berjejer jika layar cukup luas
+      child: CheckboxListTile(
+        title: Text(title, style: const TextStyle(fontSize: 13)),
+        value: value,
+        onChanged: onChanged,
+        activeColor: const Color(0xFF9C5A1A),
+        contentPadding: EdgeInsets.zero,
+        controlAffinity: ListTileControlAffinity.leading,
+        dense: true,
       ),
     );
   }
@@ -210,7 +221,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
           if (isNumber && int.tryParse(value) == null) return "Harus berupa angka";
           if (isPhone) {
             final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
-            if (cleaned.length < 10 || cleaned.length > 15) return "Nomor pengguna tidak valid";
+            if (cleaned.length < 10 || cleaned.length > 15) return "Nomor tidak valid";
           }
           return null;
         },
