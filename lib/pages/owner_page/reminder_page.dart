@@ -704,6 +704,6 @@ class _ReminderPageState extends State<ReminderPage> {
           ],
         ),
       ),
-    );
+    ); 
   }
 }

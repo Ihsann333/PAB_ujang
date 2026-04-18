@@ -20,7 +20,7 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
     fetchTenants();
   }
 
-  Future<void> fetchTenants() async {
+Future<void> fetchTenants() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) {
@@ -28,20 +28,26 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
         return;
       }
 
+      // 1. Ambil ID kost milik owner ini
       final myKosts = await supabase.from('kosts').select('id').eq('owner_id', user.id);
       final List ids = (myKosts as List).map((k) => k['id']).toList();
 
       if (ids.isEmpty) {
-        if (mounted) {
-          setState(() {
-            tenants = [];
-            isLoading = false;
-          });
-        }
+        if (mounted) setState(() => { tenants = [], isLoading = false });
         return;
       }
 
-      final data = await supabase.from('profiles').select().inFilter('kost_id', ids);
+      // 2. QUERY PERBAIKAN: Gunakan format select yang lebih eksplisit
+      // Kita ambil data profile dan join ke tabel kosts
+      final data = await supabase
+          .from('profiles')
+          .select('''
+            *,
+            kosts:kost_id (
+              name
+            )
+          ''')
+          .inFilter('kost_id', ids);
 
       if (mounted) {
         setState(() {
@@ -50,18 +56,23 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
         });
       }
     } catch (e) {
+      debugPrint('Error fetch: $e'); // Cek error di konsol kalau masih kosong
       if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> handleUserExit(String userId, {required bool isApproved}) async {
     try {
-      Map<String, dynamic> updateData = isApproved ? {'kost_id': null, 'exit_request': false} : {'exit_request': false};
+      Map<String, dynamic> updateData = isApproved 
+          ? {'kost_id': null, 'exit_request': false} 
+          : {'exit_request': false};
 
       await supabase.from('profiles').update(updateData).eq('id', userId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isApproved ? 'Berhasil diproses' : 'Permintaan ditolak')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isApproved ? 'Berhasil diproses' : 'Permintaan ditolak'))
+        );
         fetchTenants();
       }
     } catch (e) {
@@ -91,15 +102,21 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                   itemBuilder: (context, index) {
                     final t = tenants[index];
                     final bool isRequesting = t['exit_request'] ?? false;
+                    
+                    // Ambil nama kost dari hasil join
+                    final String kostName = t['kosts']?['name'] ?? 'Kost Tidak Diketahui';
+                    
                     final String tenantName = (t['full_name']?.toString().trim().isNotEmpty ?? false)
                         ? t['full_name'].toString().trim()
                         : (t['email']?.toString().split('@')[0] ?? 'User');
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       color: isRequesting ? Colors.orange[50] : Colors.white,
                       child: ListTile(
                         onTap: () => _showTenantInfoPopup(t),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         leading: CircleAvatar(
                           backgroundColor: isRequesting ? Colors.orange : const Color(0xFF9C5A1A),
                           child: const Icon(Icons.person, color: Colors.white),
@@ -111,18 +128,52 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                             fontSize: 16,
                           ),
                         ),
-                        subtitle: Text(
-                          isRequesting ? 'Ingin keluar kost' : 'Status: Aktif',
-                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            // INFO UNIT KOS DI LIST
+                            Row(
+                              children: [
+                                const Icon(Icons.home_work_rounded, size: 14, color: Color(0xFF9C5A1A)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  kostName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: const Color(0xFF9C5A1A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isRequesting ? 'Ingin keluar kost' : 'Status: Aktif',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: isRequesting ? Colors.orange[900] : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (isRequesting) ...[
-                              IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () => handleUserExit(t['id'], isApproved: true)),
-                              IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () => handleUserExit(t['id'], isApproved: false)),
+                              IconButton(
+                                icon: const Icon(Icons.check_circle, color: Colors.green), 
+                                onPressed: () => handleUserExit(t['id'], isApproved: true)
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.cancel, color: Colors.red), 
+                                onPressed: () => handleUserExit(t['id'], isApproved: false)
+                              ),
                             ] else
-                              IconButton(icon: const Icon(Icons.person_remove, color: Colors.redAccent), onPressed: () => _showKickConfirm(t['id'], tenantName)),
+                              IconButton(
+                                icon: const Icon(Icons.person_remove, color: Colors.redAccent), 
+                                onPressed: () => _showKickConfirm(t['id'], tenantName)
+                              ),
                           ],
                         ),
                       ),
@@ -142,6 +193,10 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
     final String email = (tenant['email']?.toString().trim().isNotEmpty ?? false)
         ? tenant['email'].toString().trim()
         : '-';
+    
+    // Ambil nama kost untuk di popup
+    final String kostName = tenant['kosts']?['name'] ?? '-';
+    
     final String status = tenant['exit_request'] == true ? 'Mengajukan Keluar' : 'Aktif';
 
     showDialog(
@@ -205,6 +260,9 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
                   children: [
                     _buildInfoItem('Nama Pengguna', name),
                     const SizedBox(height: 10),
+                    // ITEM INFO BARU: UNIT KOST
+                    _buildInfoItem('Unit Kost', kostName), 
+                    const SizedBox(height: 10),
                     _buildInfoItem('Nomor Pengguna', phone),
                     const SizedBox(height: 10),
                     _buildInfoItem('Email', email),
@@ -263,7 +321,7 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
           Text(
             value,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
+              fontSize: 15,
               color: const Color(0xFF2A221B),
               fontWeight: FontWeight.w700,
             ),
@@ -278,6 +336,7 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFFFFFBF7),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Kick Penghuni?', style: GoogleFonts.sora(fontWeight: FontWeight.w700)),
         content: Text(
           'Keluarkan ${tenantName ?? 'user'} sekarang?',
