@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class DetailKosPage extends StatelessWidget {
   final Map kos;
@@ -64,19 +65,19 @@ class DetailKosPage extends StatelessWidget {
                   // Nama Kos (Tanpa Label Premium)
                   Text(
                     kos['name'] ?? 'Nama Kost',
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF2D1E12)),
+                    style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: const Color(0xFF2D1E12)),
                   ),
                   const SizedBox(height: 10),
                   
                   // Harga
                   Text(
                     "Rp ${formatRupiah(kos['price'])}",
-                    style: const TextStyle(fontSize: 22, color: Color(0xFF9C5A1A), fontWeight: FontWeight.w800),
+                    style: GoogleFonts.sora(fontSize: 22, color: const Color(0xFF9C5A1A), fontWeight: FontWeight.w700),
                   ),
-                  const Text("per bulan", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  Text("per bulan", style: GoogleFonts.plusJakartaSans(color: Colors.grey, fontSize: 14)),
                   
                   const SizedBox(height: 30),
-                  const Text("Fasilitas Utama", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text("Fasilitas Utama", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 15),
 
                   // PERBAIKAN: Menggunakan Wrap agar tidak jauhan/renggang
@@ -91,7 +92,7 @@ class DetailKosPage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 35),
-                  const Text("Aturan", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text("Aturan", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
                   
                   Container(
@@ -104,7 +105,7 @@ class DetailKosPage extends StatelessWidget {
                     ),
                     child: Text(
                       kos['rules'] ?? "Hubungi pemilik untuk detail aturan.",
-                      style: TextStyle(fontSize: 15, color: Colors.brown.shade900, height: 1.6),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.brown.shade900, height: 1.6),
                     ),
                   ),
                   const SizedBox(height: 50),
@@ -135,13 +136,13 @@ class DetailKosPage extends StatelessWidget {
         children: [
           Icon(icon, color: isAvailable ? const Color(0xFF9C5A1A) : Colors.grey, size: 24),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 2),
           Text(
             isAvailable ? "Include" : "N/A",
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 10, 
-              fontWeight: FontWeight.bold, 
+              fontWeight: FontWeight.w700, 
               color: isAvailable ? Colors.green : Colors.red
             ),
           ),
