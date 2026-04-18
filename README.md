@@ -1,16 +1,63 @@
-# TruthLink ⚖️
+# KOSTLY ⾕
 
 <p align="center">
-  <img width="545" height="589" alt="Tak berjudul27_20251023092038" src="https://github.com/user-attachments/assets/deaf598f-fec5-43cd-9c56-ca3f501567d3" /><br>
-  <b>Peace, Justice and Strong Institutions!</b>
+  <img width="400" height="400" alt="Screenshot 2026-04-18 215232" src="https://github.com/user-attachments/assets/87a37505-c024-481c-888f-64d750a6160d" /> 
+  <b>Aplikasi Manajemen Pengingat Kost Berbasis Digital</b>
 </p>
 
 
 
 # 👩‍💻 Kontributor 
 
-| Rini Wulandari | Nur Ihsan | Alvionej| Nadila Putri |
-|---------------|------------|------|--------------------|
-| ![WhatsApp Image 2025-05-08 at 11 42 13 (1)](https://github.com/user-attachments/assets/b58f52b9-7692-4c50-811a-0fefba46169f)| ![WhatsApp Image 2025-11-03 at 18 43 05](https://github.com/user-attachments/assets/3a9bbb55-9637-468b-af41-63df7cf1e013) |![WhatsApp Image 2025-11-03 at 18 48 43 (1)](https://github.com/user-attachments/assets/69bd6828-1858-4461-9ae7-ab7b07e736bd)| <img width="318" height="359" alt="Screenshot 2025-11-04 132115" src="https://github.com/user-attachments/assets/055ecbb0-3505-4e25-b30b-9ed859fd4046" />|
-| 2409116003 | 2409116046 | 2409116048| 2409116052 | 
-| Sistem Informasi A '24 | Sistem Informasi B '24 |  Sistem Informasi B '24 |  Sistem Informasi B'24 | 
+| Rini Wulandari | Nur Ihsan | Alvionej|
+|---------------|------------|-------------|
+|<img width="1967" height="1967" alt="Profil1_" src="https://github.com/user-attachments/assets/7bdac3b8-192a-4b55-aa67-82896456fc92" />| <img width="2640" height="2640" alt="DSC05291 JPG" src="https://github.com/user-attachments/assets/886a16f4-a08a-4410-aaf8-39c80ea7c983" /> | <img width="3610" height="3610" alt="DSCF7771 JPG" src="https://github.com/user-attachments/assets/813259fa-ef54-42c6-b30d-8b8294c346f4" /> |
+| 2409116048 | 2409116051 | 2409116073 |
+| Sistem Informasi B '24 | Sistem Informasi B '24 |  Sistem Informasi B '24 |
+
+
+# 🧾 Deskripsi Program
+
+Aplikasi Manajemen Pengingat Kost Berbasis Digital adalah sistem yang dirancang untuk mempermudah pengelolaan kost secara lebih terstruktur dan efisien. Aplikasi ini membantu mengatasi permasalahan seperti keterlambatan pembayaran dan penyampaian informasi yang tidak merata melalui fitur pengingat otomatis dan sistem informasi terpusat.
+
+Tujuan aplikasi ini adalah meningkatkan kedisiplinan pembayaran penghuni serta memudahkan pemilik kost dalam memantau dan mengelola data secara real-time. Selain itu, aplikasi ini juga bertujuan untuk memastikan informasi dapat tersampaikan dengan cepat, merata, dan lebih efektif kepada seluruh penghuni.
+
+
+# 💻 Teknologi Yang Digunakan
+Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara tertata dan efisien. Pemilihan teknologi difokuskan agar program mudah dikembangkan dan aman, diantaranya yaitu :
+
+1. Bahasa Pemrograman: Java dengan OOP, membuat kode modular dan mudah dikembangkan
+2. ncjwned: wencdwe
+3. wjdncw: wenweuncwe
+4. wjecnwe: wncewwjned
+5. wjendwend: iwediwned
+
+
+# 📱 Fitur - Fitur Utama Program
+
+🔹 Fitur untuk User (Penghuni Kost)
+
+    Login: Melakukan login dengan memasukkan kode yang diberikan oleh admin
+
+
+🔹 Fitur untuk Owner (Pemilik Kost)
+
+    wjcnwienf: wjncijwefhwe
+    
+
+🔹 Fitur untuk Admin (Pengelola Aplikasi)
+
+    wjifniuewrbfu3: wjecnwien
+
+
+# 📲 Widget Yang Digunakan
+
+
+
+    
+
+
+
+
+
+
