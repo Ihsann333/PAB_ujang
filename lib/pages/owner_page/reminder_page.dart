@@ -96,21 +96,44 @@ class _ReminderPageState extends State<ReminderPage> {
       if (mounted) setState(() => isLoadingReminders = false);
     }
   }
+  
 
   Future<void> sendReminder() async {
-    if (_titleCtrl.text.isEmpty || _msgCtrl.text.isEmpty) return;
-    if (selectedKostId == null || selectedKostId!.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Pilih kost tujuan terlebih dahulu")),
-        );
-      }
-      return;
+  if (_titleCtrl.text.isEmpty || _msgCtrl.text.isEmpty) return;
+  
+  if (selectedKostId == null || selectedKostId!.isEmpty) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pilih kost tujuan terlebih dahulu")),
+      );
     }
-    setState(() => isSending = true);
-    try {
-      // Waktu reminder otomatis saat tombol kirim ditekan.
-      final reminderAt = DateTime.now();
+    return;
+  }
+
+  // --- TAMBAHKAN LOGIKA PENGECEKAN DI SINI ---
+  final selectedKost = myKosts.firstWhere(
+    (k) => k['id'].toString() == selectedKostId,
+    orElse: () => null,
+  );
+
+  if (selectedKost == null || selectedKost['is_approved'] != true) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Kost belum disetujui (ACC). Reminder tidak dapat dikirim."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+    return;
+  }
+  // -------------------------------------------
+
+  setState(() => isSending = true);
+  try {
+    // ... sisa kode pengiriman yang sudah ada ...
+    final reminderAt = DateTime.now();
+    // (Lanjutkan dengan kode insert kamu yang di bawahnya)
 
       final ownerId = supabase.auth.currentUser?.id;
       if (ownerId == null) throw Exception("User belum login");
@@ -488,21 +511,31 @@ class _ReminderPageState extends State<ReminderPage> {
                         value: selectedKostId,
                         isExpanded: true,
                         hint: Text("Pilih Kost Tujuan", style: GoogleFonts.plusJakartaSans()),
-                        items: myKosts
-                            .map(
-                              (k) => DropdownMenuItem<String>(
-                                value: k['id'].toString(),
-                                child: Text(
-                                  k['name']?.toString() ?? 'Kost',
-                                  style: GoogleFonts.plusJakartaSans(),
+                        items: myKosts.map((k) {
+                          bool isApproved = k['is_approved'] == true;
+                          return DropdownMenuItem<String>(
+                            value: k['id'].toString(),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    k['name']?.toString() ?? 'Kost',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: isApproved ? const Color(0xFF2D241A) : Colors.grey,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
+                                if (!isApproved)
+                                  const Icon(Icons.lock_clock, size: 16, color: Colors.orange),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                         onChanged: (value) => setState(() => selectedKostId = value),
                       ),
                     ),
                   ),
+                  
                   const SizedBox(height: 14),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(

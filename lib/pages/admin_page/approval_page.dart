@@ -276,7 +276,7 @@ Future<void> handleLogout() async {
                     onReject: () => handleRejectOwner(ownerId),
                     isApproving: approvingOwnerIds.contains(ownerId),
                     isRejecting: rejectingOwnerIds.contains(ownerId),
-                    approveLabel: "APPROVE SEMUA",
+                    approveLabel: "APPROVE",
                     rejectLabel: "TOLAK",
                   ),
                   const SizedBox(height: 20),

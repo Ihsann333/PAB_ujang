@@ -15,9 +15,10 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final supabase = SupabaseService.client;
-  final _formKey = GlobalKey<FormState>(); // Kunci untuk validasi form
+  final _formKey = GlobalKey<FormState>();
 
   bool isLoading = false;
+  bool _obscurePassword = true; // State untuk show/hide password
 
   // Fungsi snackbar biar tampilannya cantik dan informatif
   void _showSnackBar(String message, {bool isError = false}) {
@@ -33,7 +34,6 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
   }
 
   Future<void> registerUser() async {
-    // 1. Cek validasi form dulu
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
@@ -47,7 +47,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       final user = res.user;
       if (user == null) throw "Gagal membuat akun, silahkan coba lagi.";
 
-      // 2. Masukkan ke table profiles
+      // Simpan ke table profiles
       await supabase.from('profiles').insert({
         'id': user.id,
         'full_name': nameController.text.trim(),
@@ -58,10 +58,9 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       });
 
       _showSnackBar("Registrasi Berhasil! Silahkan Login.");
-      if (mounted) Navigator.pop(context); // Balik ke halaman login
+      if (mounted) Navigator.pop(context);
 
     } catch (e) {
-      // 3. Error handling biar user nggak bingung
       String errorMsg = e.toString();
       if (errorMsg.contains("already registered")) {
         errorMsg = "Email ini sudah terdaftar!";
@@ -76,15 +75,12 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Pakai .width biar error maxWidth hilang
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // Background Cream
+      backgroundColor: const Color(0xFFF2E8DA),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Container(
-            // Card tetap proporsional di HP maupun Web
             constraints: const BoxConstraints(maxWidth: 400),
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
@@ -95,7 +91,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
               ],
             ),
             child: Form(
-              key: _formKey, // Pasang form key di sini
+              key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -119,12 +115,10 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                   ),
                   const SizedBox(height: 32),
 
+                  // Input Nama
                   TextFormField(
                     controller: nameController,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      color: const Color(0xFF4A2C0A),
-                    ),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, color: const Color(0xFF4A2C0A)),
                     decoration: _inputDecoration("Nama Pengguna"),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) return "Nama pengguna tidak boleh kosong";
@@ -134,13 +128,11 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Input Nomor Telepon
                   TextFormField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      color: const Color(0xFF4A2C0A),
-                    ),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, color: const Color(0xFF4A2C0A)),
                     decoration: _inputDecoration("Nomor Pengguna"),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) return "Nomor pengguna tidak boleh kosong";
@@ -151,18 +143,14 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Input Email dengan Validasi Karakter
+                  // Input Email
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      color: const Color(0xFF4A2C0A),
-                    ),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, color: const Color(0xFF4A2C0A)),
                     decoration: _inputDecoration("Email"),
                     validator: (value) {
                       if (value == null || value.isEmpty) return "Email tidak boleh kosong";
-                      // Cek format email pake RegExp
                       if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                         return "Format email tidak valid";
                       }
@@ -171,15 +159,26 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Input Password
+                  // Input Password (DENGAN FITUR SHOW/HIDE)
                   TextFormField(
                     controller: passwordController,
-                    obscureText: true,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      color: const Color(0xFF4A2C0A),
+                    obscureText: _obscurePassword,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 15, color: const Color(0xFF4A2C0A)),
+                    decoration: _inputDecoration(
+                      "Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: const Color(0xFF9C5A1A),
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
-                    decoration: _inputDecoration("Password"),
                     validator: (value) {
                       if (value == null || value.isEmpty) return "Password tidak boleh kosong";
                       if (value.length < 6) return "Minimal 6 karakter";
@@ -201,9 +200,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                         ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : Text(
                             "Daftar Sekarang",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
                           ),
                   ),
 
@@ -229,10 +226,11 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
     );
   }
 
-  // Helper untuk style input biar nggak ngetik ulang
-  InputDecoration _inputDecoration(String label) {
+  // Helper untuk style input yang sudah mendukung SuffixIcon
+  InputDecoration _inputDecoration(String label, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
+      suffixIcon: suffixIcon,
       labelStyle: GoogleFonts.plusJakartaSans(
         color: const Color(0xFF9C5A1A),
         fontSize: 13,

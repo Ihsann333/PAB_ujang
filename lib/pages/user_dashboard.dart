@@ -1186,6 +1186,8 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
     return true;
   }
 
+  String paymentStatus = 'Memuat...';
+
   @override
   void initState() {
     super.initState();

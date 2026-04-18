@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Penting untuk Formatter
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 import 'manage_tenants_page.dart';
@@ -60,62 +61,73 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
           backgroundColor: const Color(0xFFFFFBF7),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            "Daftarkan Unit Kost Baru",
-            style: GoogleFonts.sora(
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF9C5A1A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          contentPadding: EdgeInsets.zero, // Kita atur padding secara manual di dalam
+          title: Padding(
+            padding: const EdgeInsets.only(top: 24, left: 24, right: 24),
+            child: Text(
+              "Daftarkan Unit Kost",
+              style: GoogleFonts.sora(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF9C5A1A),
+                fontSize: 18,
+              ),
             ),
           ),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildField(_nameCtrl, "Nama Kost", Icons.home, "Contoh: Kostly Residence"),
-                const SizedBox(height: 12),
-                _buildField(_addressCtrl, "Alamat Lengkap", Icons.location_on, "Jl. Merdeka No. 123"),
-                const SizedBox(height: 12),
-                _buildField(_priceCtrl, "Harga per Bulan", Icons.payments, "1500000", isNumber: true),
-                const SizedBox(height: 12),
-                _buildField(_slotsCtrl, "Total Kamar", Icons.meeting_room, "Contoh: 12", isNumber: true),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  title: Text("Termasuk Listrik", style: GoogleFonts.plusJakartaSans(fontSize: 14)),
-                  value: _includeListrik,
-                  activeThumbColor: const Color(0xFF9C5A1A),
-                  onChanged: (val) => setModalState(() => _includeListrik = val),
-                ),
-                SwitchListTile(
-                  title: Text("Termasuk Air", style: GoogleFonts.plusJakartaSans(fontSize: 14)),
-                  value: _includeAir,
-                  activeThumbColor: const Color(0xFF9C5A1A),
-                  onChanged: (val) => setModalState(() => _includeAir = val),
-                ),
-                SwitchListTile(
-                  title: Text("Termasuk WiFi", style: GoogleFonts.plusJakartaSans(fontSize: 14)),
-                  value: _includeWifi,
-                  activeThumbColor: const Color(0xFF9C5A1A),
-                  onChanged: (val) => setModalState(() => _includeWifi = val),
-                ),
-                const SizedBox(height: 12),
-                _buildField(_rulesCtrl, "Aturan Kost", Icons.description, "AC, WiFi, dll", maxLines: 3),
-              ],
+            // Menambahkan padding di sekeliling form
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildField(_nameCtrl, "Nama Kost", Icons.home, "Contoh: Kostly Residence", isName: true),
+                  const SizedBox(height: 16),
+                  _buildField(_addressCtrl, "Alamat Lengkap", Icons.location_on, "Jl. Merdeka No. 123"),
+                  const SizedBox(height: 16),
+                  _buildField(_priceCtrl, "Harga per Bulan", Icons.payments, "1500000", isNumber: true),
+                  const SizedBox(height: 16),
+                  _buildField(_slotsCtrl, "Total Kamar", Icons.meeting_room, "Contoh: 12", isNumber: true),
+                  const SizedBox(height: 16),
+                  
+                  // Container untuk Switch agar terlihat berkelompok
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F0EA),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildSwitchTile("Termasuk Listrik", _includeListrik, (val) => setModalState(() => _includeListrik = val)),
+                        _buildSwitchTile("Termasuk Air", _includeAir, (val) => setModalState(() => _includeAir = val)),
+                        _buildSwitchTile("Termasuk WiFi", _includeWifi, (val) => setModalState(() => _includeWifi = val)),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  _buildField(_rulesCtrl, "Aturan Kost", Icons.description, "AC, WiFi, dll", maxLines: 3),
+                ],
+              ),
             ),
           ),
+          actionsPadding: const EdgeInsets.only(right: 16, bottom: 16),
           actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.pop(context),
-              child: Text("Batal", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500)),
+              child: Text("Batal", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500, color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF9C5A1A),
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
               onPressed: isSaving ? null : () => _saveNewKost(setModalState),
               child: Text(
-                isSaving ? "Memproses..." : "Daftarkan Kost",
+                isSaving ? "Memproses..." : "Simpan",
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
               ),
             ),
@@ -125,23 +137,41 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 
-  Widget _buildField(TextEditingController ctrl, String label, IconData icon, String hint, {bool isNumber = false, int maxLines = 1}) {
+  // Helper untuk SwitchListTile agar lebih rapi
+  Widget _buildSwitchTile(String title, bool value, Function(bool) onChanged) {
+    return SwitchListTile(
+      title: Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w500)),
+      value: value,
+      dense: true,
+      activeColor: const Color(0xFF9C5A1A),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, String hint, 
+      {bool isNumber = false, bool isName = false, int maxLines = 1}) {
     return TextField(
       controller: ctrl,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       maxLines: maxLines,
+      inputFormatters: [
+        if (isName) FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\s]')), // Nama boleh angka tapi tanpa emoji
+        if (isNumber) FilteringTextInputFormatter.digitsOnly,
+      ],
       style: GoogleFonts.plusJakartaSans(
         color: const Color(0xFF3D3328),
+        fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
-        hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8A7B6A)),
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF9C5A1A)),
+        labelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500, fontSize: 13, color: const Color(0xFF9C5A1A)),
+        hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8A7B6A), fontSize: 12),
+        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9C5A1A)),
         filled: true,
         fillColor: const Color(0xFFF5F0EA),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
@@ -170,31 +200,10 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      bool inserted = false;
-      Object? lastError;
-
-      try {
-        await supabase.from('kosts').insert({
-          ...basePayload,
-          'rules': _rulesCtrl.text.trim(),
-        });
-        inserted = true;
-      } catch (e) {
-        lastError = e;
-      }
-
-      if (!inserted) {
-        try {
-          await supabase.from('kosts').insert(basePayload);
-          inserted = true;
-        } catch (e) {
-          lastError = e;
-        }
-      }
-
-      if (!inserted) {
-        throw Exception(lastError?.toString() ?? "Gagal menyimpan data kost");
-      }
+      await supabase.from('kosts').insert({
+        ...basePayload,
+        'rules': _rulesCtrl.text.trim(),
+      });
 
       if (mounted) {
         Navigator.pop(context);
@@ -202,6 +211,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           const SnackBar(content: Text("Unit berhasil diajukan ke admin!"), backgroundColor: Colors.green),
         );
       }
+      
+      // Reset Form
       _nameCtrl.clear();
       _addressCtrl.clear();
       _priceCtrl.clear();
@@ -227,19 +238,22 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircleAvatar(radius: 50, backgroundColor: Color(0xFF9C5A1A), child: Icon(Icons.person, size: 50, color: Colors.white)),
+            const CircleAvatar(
+              radius: 50, 
+              backgroundColor: Color(0xFF9C5A1A), 
+              child: Icon(Icons.person, size: 50, color: Colors.white)
+            ),
             const SizedBox(height: 10),
             Text(
-              ownerProfile?['full_name'] ?? supabase.auth.currentUser?.email ?? "Owner",
+              ownerProfile?['full_name'] ?? "Owner",
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
-                fontSize: 32,
+                fontSize: 28,
                 color: const Color(0xFF2D241A),
               ),
             ),
             const SizedBox(height: 30),
             
-            // Tombol Navigasi ke Manajemen Penghuni
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: ElevatedButton.icon(
@@ -251,10 +265,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                 ),
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerManageTenantsPage())),
                 icon: const Icon(Icons.people),
-                label: Text(
-                  "Kelola Penghuni",
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-                ),
+                label: Text("Kelola Penghuni", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 12),
@@ -270,10 +281,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                 ),
                 onPressed: _showAddKostDialog,
                 icon: const Icon(Icons.add_business),
-                label: Text(
-                  "Tambah Unit Kost Baru",
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-                ),
+                label: Text("Tambah Unit Kost Baru", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 24),
@@ -282,10 +290,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                 await supabase.auth.signOut();
                 if (mounted) Navigator.pushReplacementNamed(context, '/');
               },
-              child: Text(
-                "Logout",
-                style: GoogleFonts.plusJakartaSans(color: Colors.red),
-              ),
+              child: Text("Logout", style: GoogleFonts.plusJakartaSans(color: Colors.red, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
