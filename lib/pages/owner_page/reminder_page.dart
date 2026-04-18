@@ -341,7 +341,7 @@ class _ReminderPageState extends State<ReminderPage> {
                   ),
                 ),
                 child: Row(
-                  children: const [
+                  children: [
                     CircleAvatar(
                       radius: 16,
                       backgroundColor: Color(0xFFE24D56),
@@ -350,20 +350,24 @@ class _ReminderPageState extends State<ReminderPage> {
                     SizedBox(width: 10),
                     Text(
                       "Hapus Reminder",
-                      style: TextStyle(
+                      style: GoogleFonts.sora(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF2D241A),
+                        color: const Color(0xFF2D241A),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(18, 18, 18, 6),
                 child: Text(
                   "Yakin ingin menghapus reminder ini?",
-                  style: TextStyle(fontSize: 16, color: Color(0xFF4B4339)),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    color: const Color(0xFF4B4339),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Padding(
@@ -377,7 +381,13 @@ class _ReminderPageState extends State<ReminderPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       ),
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text("Batal"),
+                      child: Text(
+                        "Batal",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF7B6A56),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -389,7 +399,10 @@ class _ReminderPageState extends State<ReminderPage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text("Hapus", style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: Text(
+                        "Hapus",
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),
@@ -673,18 +686,18 @@ class _ReminderPageState extends State<ReminderPage> {
                                     }
                                   },
                                   itemBuilder: (context) => [
-                                    const PopupMenuItem<String>(
+                                    PopupMenuItem<String>(
                                       value: 'delete',
                                       height: 42,
                                       child: Row(
                                         children: [
-                                          Icon(Icons.delete_outline, color: Color(0xFFE24D56), size: 20),
-                                          SizedBox(width: 10),
+                                          const Icon(Icons.delete_outline, color: Color(0xFFE24D56), size: 20),
+                                          const SizedBox(width: 10),
                                           Text(
                                             "Hapus reminder",
-                                            style: TextStyle(
-                                              color: Color(0xFF2D241A),
-                                              fontWeight: FontWeight.w600,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              color: const Color(0xFF2D241A),
+                                              fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                         ],

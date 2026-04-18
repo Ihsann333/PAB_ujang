@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'monitor_page.dart';
 import 'approval_page.dart';
 
@@ -26,6 +27,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         currentIndex: selectedIndex,
         selectedItemColor: const Color(0xFF9C5A1A),
         unselectedItemColor: Colors.grey,
+        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
         onTap: (i) => setState(() => selectedIndex = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: "Monitor"),

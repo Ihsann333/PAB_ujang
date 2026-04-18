@@ -1,7 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/pages/admin_page/detail_kos.dart';
 import 'package:kostly_pa/pages/login_page.dart'; 
 import 'package:kostly_pa/services/supabase_service.dart';
+
+TextStyle _soraAdmin({
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+}) {
+  return GoogleFonts.sora(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+  );
+}
+
+TextStyle _jakartaAdmin({
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+}) {
+  return GoogleFonts.plusJakartaSans(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+  );
+}
 
 class MonitorPage extends StatefulWidget {
   const MonitorPage({super.key});
@@ -83,17 +108,17 @@ class _MonitorPageState extends State<MonitorPage> {
                     const CircleAvatar(
                       radius: 25,
                       backgroundColor: Color(0xFF9C5A1A),
-                      child: Text("A", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      child: Text("A", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
                     ),
                     const SizedBox(width: 15),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Administrator", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          Text("Administrator", style: _jakartaAdmin(color: Colors.grey, fontSize: 13)),
                           Text(
                             adminEmail ?? "admin@gmail.com", 
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                            style: _jakartaAdmin(fontSize: 16, fontWeight: FontWeight.w700)
                           ),
                         ],
                       ),
@@ -105,18 +130,46 @@ class _MonitorPageState extends State<MonitorPage> {
                           context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              title: const Text("Konfirmasi Logout"),
-                              content: const Text("Apakah Anda yakin ingin keluar dari akun ini?"),
+                              backgroundColor: const Color(0xFFFFFBF7),
+                              surfaceTintColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                              titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
+                              contentPadding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+                              actionsPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                              title: Text(
+                                "Konfirmasi Logout",
+                                style: _soraAdmin(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                  color: const Color(0xFF2D241A),
+                                ),
+                              ),
+                              content: Text(
+                                "Apakah Anda yakin ingin keluar dari akun ini?",
+                                style: _jakartaAdmin(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF5D5145),
+                                ),
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context), // Tutup dialog saja
-                                  child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF9A8D80),
+                                    textStyle: _jakartaAdmin(fontWeight: FontWeight.w600, fontSize: 15),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  ),
+                                  child: const Text("Batal"),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.redAccent,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    backgroundColor: const Color(0xFFE24D56),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    minimumSize: const Size(114, 42),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    textStyle: _jakartaAdmin(fontWeight: FontWeight.w700, fontSize: 15),
                                   ),
                                   onPressed: () async {
                                     await supabase.auth.signOut();
@@ -129,7 +182,7 @@ class _MonitorPageState extends State<MonitorPage> {
                                       );
                                     }
                                   },
-                                  child: const Text("Ya, Keluar", style: TextStyle(color: Colors.white)),
+                                  child: const Text("Ya, Keluar"),
                                 ),
                               ],
                             );
@@ -160,7 +213,7 @@ class _MonitorPageState extends State<MonitorPage> {
               ),
 
               const SizedBox(height: 35),
-              const Text("Unit Terbaru", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text("Unit Terbaru", style: _soraAdmin(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 15),
               ...top3Terbaru.map((kos) => _buildRecentCard(kos)).toList(),
             ],
@@ -185,8 +238,8 @@ class _MonitorPageState extends State<MonitorPage> {
           children: [
             Icon(i, color: Colors.white, size: 28),
             const SizedBox(height: 15),
-            Text(v, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-            Text(t, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Text(v, style: _soraAdmin(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
+            Text(t, style: _jakartaAdmin(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -200,8 +253,8 @@ class _MonitorPageState extends State<MonitorPage> {
       child: ListTile(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosPage(kos: kos))),
         leading: const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
-        title: Text(kos['name'] ?? "Nama Kost", style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text("Rp ${formatRupiah(kos['price'])}"),
+        title: Text(kos['name'] ?? "Nama Kost", style: _jakartaAdmin(fontWeight: FontWeight.w700)),
+        subtitle: Text("Rp ${formatRupiah(kos['price'])}", style: _jakartaAdmin()),
         trailing: const Icon(Icons.chevron_right),
       ),
     );
@@ -253,8 +306,8 @@ Widget _buildInfoRow(IconData icon, String label, String value) {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(label, style: _jakartaAdmin(color: Colors.grey, fontSize: 12)),
+          Text(value, style: _jakartaAdmin(fontWeight: FontWeight.w700, fontSize: 14)),
         ],
       ),
     ],
@@ -276,7 +329,7 @@ class ListDataPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5F2),
       appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(title, style: _soraAdmin(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF9C5A1A),
         foregroundColor: Colors.white,
       ),
@@ -301,8 +354,8 @@ class ListDataPage extends StatelessWidget {
                     backgroundColor: const Color(0xFFF2E8DA),
                     child: Icon(table == 'kosts' ? Icons.home_work : Icons.person, color: const Color(0xFF9C5A1A)),
                   ),
-                  title: Text(item['name'] ?? item['email'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(table == 'kosts' ? "Rp ${formatRupiah(item['price'])}" : (item['email'] ?? "")),
+                  title: Text(item['name'] ?? item['email'] ?? 'User', style: _jakartaAdmin(fontWeight: FontWeight.w700)),
+                  subtitle: Text(table == 'kosts' ? "Rp ${formatRupiah(item['price'])}" : (item['email'] ?? ""), style: _jakartaAdmin()),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     if (table == 'kosts') {
@@ -335,7 +388,11 @@ class OwnerDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5F2),
-      appBar: AppBar(title: const Text("Profil Owner"), backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: Text("Profil Owner", style: _soraAdmin(fontWeight: FontWeight.w700)),
+        backgroundColor: const Color(0xFF9C5A1A),
+        foregroundColor: Colors.white,
+      ),
       body: FutureBuilder(
         // PERBAIKAN: Gunakan select('*') agar saat klik kos milik owner, datanya lengkap
         future: supabase.from('kosts').select('*').eq('owner_id', owner['id']),
@@ -347,20 +404,23 @@ class OwnerDetailPage extends StatelessWidget {
               children: [
                 const CircleAvatar(radius: 50, backgroundColor: Color(0xFF9C5A1A), child: Icon(Icons.person, size: 60, color: Colors.white)),
                 const SizedBox(height: 20),
-                Text(owner['name'] ?? "Owner", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                Text(owner['email'] ?? "-", style: const TextStyle(color: Colors.grey)),
+                Text(owner['name'] ?? "Owner", style: _soraAdmin(fontSize: 24, fontWeight: FontWeight.w700)),
+                Text(owner['email'] ?? "-", style: _jakartaAdmin(color: Colors.grey)),
                 const Divider(height: 50),
-                const Align(alignment: Alignment.centerLeft, child: Text("Kost yang dimiliki:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Kost yang dimiliki:", style: _soraAdmin(fontWeight: FontWeight.w700, fontSize: 18)),
+                ),
                 const SizedBox(height: 15),
                 if (snapshot.connectionState == ConnectionState.waiting) 
                   const Center(child: CircularProgressIndicator())
                 else if (kos.isEmpty)
-                  const Text("Belum ada kost.")
+                  Text("Belum ada kost.", style: _jakartaAdmin())
                 else ...kos.map((k) => Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
-                    title: Text(k['name']),
-                    subtitle: Text("Rp ${formatRupiah(k['price'])}"),
+                    title: Text(k['name'], style: _jakartaAdmin(fontWeight: FontWeight.w600)),
+                    subtitle: Text("Rp ${formatRupiah(k['price'])}", style: _jakartaAdmin()),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosPage(kos: k))),
                   ),
                 )).toList()
