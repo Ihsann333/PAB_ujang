@@ -98,104 +98,103 @@ class _ReminderPageState extends State<ReminderPage> {
   }
   
 
-  Future<void> sendReminder() async {
-  if (_titleCtrl.text.isEmpty || _msgCtrl.text.isEmpty) return;
-  
-  if (selectedKostId == null || selectedKostId!.isEmpty) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pilih kost tujuan terlebih dahulu")),
-      );
+Future<void> sendReminder() async {
+    // 1. Validasi Form Kosong
+    if (_titleCtrl.text.trim().isEmpty || _msgCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  "Judul dan isi pesan tidak boleh kosong!",
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      return; // Berhenti di sini jika kosong
     }
-    return;
-  }
 
-  // --- TAMBAHKAN LOGIKA PENGECEKAN DI SINI ---
-  final selectedKost = myKosts.firstWhere(
-    (k) => k['id'].toString() == selectedKostId,
-    orElse: () => null,
-  );
-
-  if (selectedKost == null || selectedKost['is_approved'] != true) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Kost belum disetujui (ACC). Reminder tidak dapat dikirim."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+    // 2. Validasi Kost Belum Dipilih
+    if (selectedKostId == null || selectedKostId!.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Silakan pilih kost tujuan terlebih dahulu"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
     }
-    return;
-  }
-  // -------------------------------------------
 
-  setState(() => isSending = true);
-  try {
-    // ... sisa kode pengiriman yang sudah ada ...
-    final reminderAt = DateTime.now();
-    // (Lanjutkan dengan kode insert kamu yang di bawahnya)
+    // --- LOGIKA PENGECEKAN ACC ---
+    final selectedKost = myKosts.firstWhere(
+      (k) => k['id'].toString() == selectedKostId,
+      orElse: () => null,
+    );
 
+    if (selectedKost == null || selectedKost['is_approved'] != true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Kost belum disetujui (ACC). Reminder tidak dapat dikirim."),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Jalankan pengiriman jika semua validasi lolos
+    setState(() => isSending = true);
+    
+    try {
       final ownerId = supabase.auth.currentUser?.id;
       if (ownerId == null) throw Exception("User belum login");
 
-      bool inserted = false;
-      Object? lastError;
-
-      final nowIso = DateTime.now().toIso8601String();
       final title = _titleCtrl.text.trim();
       final text = _msgCtrl.text.trim();
       final packedText = _packTitleAndMessage(title, text, selectedKostId!);
-      final reminderAtIso = reminderAt.toIso8601String();
+      final nowIso = DateTime.now().toIso8601String();
 
-      final payloads = <Map<String, dynamic>>[
-        // Variasi modern
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'title': title, 'message': packedText, 'reminder_at': reminderAtIso, 'created_at': nowIso},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'title': title, 'message': packedText, 'reminder_at': reminderAtIso, 'created_at': nowIso},
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'title': title, 'message': packedText, 'created_at': nowIso},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'title': title, 'message': packedText, 'created_at': nowIso},
-        // Tanpa kolom title (jika tabel tidak punya title)
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'message': packedText, 'reminder_at': reminderAtIso, 'created_at': nowIso},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'message': packedText, 'reminder_at': reminderAtIso, 'created_at': nowIso},
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'message': packedText, 'created_at': nowIso},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'message': packedText, 'created_at': nowIso},
-        // Variasi kolom Indonesia (legacy)
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'judul': title, 'pesan': packedText, 'waktu': reminderAtIso, 'created_at': nowIso},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'judul': title, 'pesan': packedText, 'waktu': reminderAtIso, 'created_at': nowIso},
-        // Minimal payload terakhir (tetap menyertakan relasi owner + kost)
-        {'owner_id': ownerId, 'kost_id': selectedKostId, 'message': packedText},
-        {'user_id': ownerId, 'kost_id': selectedKostId, 'message': packedText},
-      ];
-
-      for (final payload in payloads) {
-        if (inserted) break;
-        final cleanedPayload = <String, dynamic>{};
-        payload.forEach((key, value) {
-          if (value != null) cleanedPayload[key] = value;
-        });
-        try {
-          await supabase.from('reminders').insert(cleanedPayload);
-          inserted = true;
-        } catch (e) {
-          lastError = e;
-        }
-      }
-
-      if (!inserted) {
-        throw Exception("Gagal menyimpan reminder. Detail: $lastError");
-      }
+      // Gunakan payload utama saja untuk efisiensi
+      await supabase.from('reminders').insert({
+        'owner_id': ownerId,
+        'kost_id': selectedKostId,
+        'title': title,
+        'message': packedText,
+        'created_at': nowIso,
+      });
 
       _titleCtrl.clear();
       _msgCtrl.clear();
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Reminder berhasil dikirim")),
+          const SnackBar(
+            content: Text("✅ Reminder berhasil dikirim ke penghuni"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       fetchReminders();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal kirim reminder: $e")),
+          SnackBar(content: Text("Gagal kirim: $e"), backgroundColor: Colors.red),
         );
       }
     } finally {
