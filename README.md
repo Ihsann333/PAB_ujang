@@ -29,7 +29,13 @@ Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara 
 1. **Bahasa Pemrograman:** Dart — Bahasa utama di balik framework Flutter yang cepat dan efisien.
 2. **Framework UI:** Flutter — Memungkinkan tampilan aplikasi yang cantik dan responsif di berbagai perangkat.
 3. **Backend & Database:** Supabase (PostgreSQL) — Digunakan untuk manajemen database relasional, autentikasi, dan penyimpanan data secara *real-time*.
-4. **Arsitektur Program:** MVC (Model-View-Controller) — Memisahkan logika bisnis, data, dan tampilan agar kode mudah dikelola dan dikembangkan.
+4. **Arsitektur Program:** Layered Architecture (Role-Based) — Proyek ini menggunakan struktur berlapis yang memisahkan tanggung jawab kode berdasarkan peran pengguna dan fungsionalitas:
+
+    - Data Layer (Services): Seluruh logika integrasi dengan database dan autentikasi dipusatkan pada folder services (contoh: supabase_service.dart).
+
+    - View & Logic Layer (Pages): Antarmuka pengguna dipisahkan secara modular berdasarkan hak akses di dalam folder pages, yaitu admin_page untuk pengelola sistem dan owner_page untuk pemilik kost.
+
+    - State-Driven Logic: Mengingat efisiensi pengembangan, logika operasional setiap fitur dikelola langsung di dalam state masing-masing halaman (seperti pada reminder_page.dart) untuk memastikan sinkronisasi data yang cepat tanpa memerlukan file controller terpisah.
 5. **Version Control:** Git & GitHub — Digunakan untuk kolaborasi tim dan pelacakan perubahan kode.
 
 
@@ -62,3 +68,7 @@ Aplikasi ini dibangun menggunakan berbagai widget Flutter untuk fungsionalitas m
 * **ListView & ListTile:** Menampilkan daftar penghuni dan riwayat transaksi secara rapi.
 * **SnackBar:** Memberikan umpan balik instan jika registrasi atau pembayaran berhasil/gagal.
 * **Google Fonts:** Menggunakan font *Plus Jakarta Sans* untuk tampilan yang modern dan profesional.
+* **CircularProgressIndicator:** Memberikan umpan balik visual berupa indikator pemuatan (loading) yang berputar saat aplikasi sedang melakukan sinkronisasi data dengan Supabase atau selama proses pengiriman reminder.
+* **SingleChildScrollView:** Widget yang memungkinkan seluruh tampilan halaman dapat digulir (scrollable), sangat penting untuk mencegah error layout overflow saat pengguna membuka keyboard atau saat konten halaman melebihi ukuran layar perangkat.
+* **LinearProgressIndicator:** Indikator pemuatan berbentuk garis mendatar, memberikan umpan balik visual yang halus saat proses transisi atau pengiriman data berlangsung.
+* **RefreshIndicator:** Mengimplementasikan fitur "Pull-to-Refresh", memudahkan pengguna untuk memperbarui daftar data (seperti riwayat reminder atau status pembayaran) hanya dengan menarik layar ke bawah.
