@@ -10,15 +10,20 @@ class OwnerHomePage extends StatefulWidget {
   State<OwnerHomePage> createState() => _OwnerHomePageState();
 }
 
-class _OwnerHomePageState extends State<OwnerHomePage> {
+class _OwnerHomePageState extends State<OwnerHomePage> with SingleTickerProviderStateMixin {
   final supabase = SupabaseService.client;
   final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
+  // Controller untuk Tab
+  late TabController _tabController;
+
   bool isLoading = true;
+  bool isLoadingPayments = true;
   int totalKos = 0;
   int totalPenghuni = 0;
   int totalProfit = 0;
   List kosList = [];
+  List paymentRequests = []; // List untuk menampung ajuan bayar user
 
   late TextEditingController _nameCtrl;
   late TextEditingController _priceCtrl;
@@ -28,15 +33,19 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _nameCtrl = TextEditingController();
     _priceCtrl = TextEditingController();
     _rulesCtrl = TextEditingController();
     _addressCtrl = TextEditingController();
-    fetchDashboard();
+    
+    // Ambil semua data saat startup
+    refreshAllData();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _nameCtrl.dispose();
     _priceCtrl.dispose();
     _rulesCtrl.dispose();
@@ -44,6 +53,12 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     super.dispose();
   }
 
+  Future<void> refreshAllData() async {
+    await fetchDashboard();
+    await fetchPaymentRequests();
+  }
+
+  // --- LOGIKA 1: DASHBOARD STATISTIK ---
   Future<void> fetchDashboard() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
@@ -100,47 +115,201 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     }
   }
 
+  // --- LOGIKA 2: AMBIL DATA AJUAN BAYAR USER ---
+  Future<void> fetchPaymentRequests() async {
+    try {
+      // Pastikan tabel 'payments' sudah ada di Supabase kamu
+      final response = await supabase
+          .from('payments')
+          .select('*, profiles(full_name), kosts(name)')
+          .eq('status', 'pending')
+          .order('created_at', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          paymentRequests = response as List;
+          isLoadingPayments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => isLoadingPayments = false);
+    }
+  }
+
+  // --- LOGIKA 3: ACC PEMBAYARAN ---
+  Future<void> _approvePayment(dynamic paymentId) async {
+    try {
+      await supabase.from('payments').update({'status': 'approved'}).eq('id', paymentId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Pembayaran Berhasil di-ACC!"), backgroundColor: Colors.green)
+        );
+        refreshAllData(); // Refresh semua biar profit update
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal ACC: $e"), backgroundColor: Colors.red)
+        );
+      }
+    }
+  }
+
   // --- UI COMPONENTS ---
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)));
+    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A))));
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDFBFA),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: fetchDashboard,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                "Dashboard Owner",
-                style: GoogleFonts.sora(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF2D241A)),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(child: _summaryCard("Total Kost", "$totalKos", Icons.home_work_rounded)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _summaryCard("Penghuni", "$totalPenghuni", Icons.people_alt_rounded)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _profitCard(currency.format(totalProfit)),
-              const SizedBox(height: 32),
-              Text(
-                "Kost Saya",
-                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF2D241A)),
-              ),
-              const SizedBox(height: 16),
-              ...kosList.map((kos) => _kosCard(kos)),
-            ],
-          ),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFDFBFA),
+        elevation: 0,
+        centerTitle: false,
+        title: Text(
+          "Management Kostly",
+          style: GoogleFonts.sora(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF2D241A)),
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF9C5A1A),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF9C5A1A),
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(text: "Statistik", icon: Icon(Icons.analytics_rounded)),
+            Tab(text: "ACC Bayar", icon: Icon(Icons.receipt_long_rounded)),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildDashboardTab(),
+          _buildPaymentTab(),
+        ],
       ),
     );
   }
+
+  // TAB 1: DASHBOARD UTAMA
+  Widget _buildDashboardTab() {
+    return RefreshIndicator(
+      onRefresh: fetchDashboard,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Row(
+            children: [
+              Expanded(child: _summaryCard("Total Kost", "$totalKos", Icons.home_work_rounded)),
+              const SizedBox(width: 12),
+              Expanded(child: _summaryCard("Penghuni", "$totalPenghuni", Icons.people_alt_rounded)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _profitCard(currency.format(totalProfit)),
+          const SizedBox(height: 32),
+          Text(
+            "Kost Saya",
+            style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF2D241A)),
+          ),
+          const SizedBox(height: 16),
+          ...kosList.map((kos) => _kosCard(kos)),
+        ],
+      ),
+    );
+  }
+
+  // TAB 2: MANAJEMEN ACC BAYAR
+  Widget _buildPaymentTab() {
+    if (isLoadingPayments) return const Center(child: CircularProgressIndicator());
+
+    return RefreshIndicator(
+      onRefresh: fetchPaymentRequests,
+      child: paymentRequests.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                Icon(Icons.done_all_rounded, size: 64, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text("Semua tagihan sudah lunas/di-ACC.", 
+                    style: GoogleFonts.plusJakartaSans(color: Colors.grey)),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: paymentRequests.length,
+              itemBuilder: (context, index) {
+                final p = paymentRequests[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.orange.shade100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.orange.shade50,
+                            child: const Icon(Icons.person_search_rounded, color: Colors.orange),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p['profiles']['full_name'] ?? 'Penghuni', 
+                                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                                Text("Unit: ${p['kosts']['name']}", 
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          _statusBadge("WAITING ACC", Colors.orange),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Tagihan Bulan", style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                              Text("${p['month']} ${p['year']}", 
+                                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: const Color(0xFF9C5A1A))),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _approvePayment(p['id']),
+                            icon: const Icon(Icons.check_circle_outline, size: 18),
+                            label: const Text("ACC Sekarang"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          )
+                        ],
+                      )
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
+  // --- WIDGET HELPERS (Sama seperti kodemu sebelumnya) ---
 
   Widget _kosCard(Map kos) {
     final int activeTenants = (kos['active_tenants'] as num?)?.toInt() ?? 0;
@@ -193,7 +362,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     );
   }
 
-void _showDetailDialog(Map kos) {
+  void _showDetailDialog(Map kos) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -211,12 +380,8 @@ void _showDetailDialog(Map kos) {
                 if (kos['is_approved'] != true) _buildPendingAlert(),
                 _buildJoinCodeSection(kos),
                 const SizedBox(height: 20),
-                
-                // --- INFORMASI UTAMA ---
                 _buildPopupDetail(Icons.location_on_rounded, "Alamat", kos['address']),
                 _buildPopupDetail(Icons.payments_rounded, "Harga Sewa", currency.format(kos['price'] ?? 0)),
-                
-                // --- BAGIAN FASILITAS (INI YANG TADI HILANG) ---
                 const SizedBox(height: 12),
                 Text("Fasilitas Include:", 
                   style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey)),
@@ -229,10 +394,7 @@ void _showDetailDialog(Map kos) {
                     _buildIncludeChip("WiFi", kos['include_wifi'] == true, Icons.wifi_rounded),
                   ],
                 ),
-
                 const Divider(height: 32),
-                
-                // --- DAFTAR PENGHUNI ---
                 Row(children: [
                   const Icon(Icons.people_alt_rounded, size: 18, color: Color(0xFF9C5A1A)), 
                   const SizedBox(width: 8), 
@@ -240,9 +402,6 @@ void _showDetailDialog(Map kos) {
                 ]),
                 const SizedBox(height: 12),
                 _buildLiveTenantList(kos['id']),
-                
-                const Divider(height: 32),
-                _buildPopupDetail(Icons.gavel_rounded, "Peraturan", kos['rules']),
               ],
             ),
           ),
@@ -262,7 +421,152 @@ void _showDetailDialog(Map kos) {
     );
   }
 
-  // --- HELPER WIDGETS ---
+  // --- REUSABLE WIDGETS ---
+
+  Widget _summaryCard(String title, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: const Color(0xFF9C5A1A), borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white60, size: 24),
+          const SizedBox(height: 8),
+          Text(value, style: GoogleFonts.sora(fontSize: 32, color: Colors.white, fontWeight: FontWeight.w800)),
+          Text(title, style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _profitCard(String profit) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: const Color(0xFF2D241A), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet_rounded, color: Colors.amber, size: 32),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Total Profit Lunas", style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12)),
+              Text(profit, style: GoogleFonts.sora(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.5))),
+      child: Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: color)),
+    );
+  }
+
+  Widget _miniInfo(IconData icon, String label) {
+    return Row(children: [Icon(icon, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600))]);
+  }
+
+  // --- DIALOGS & OTHER HELPERS (Disingkat untuk menghemat tempat, tetap pakai logika lamamu) ---
+  
+  Widget _buildEditField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: const Color(0xFF9C5A1A), size: 20),
+          filled: true, fillColor: const Color(0xFFF5F0EA),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditToggle(String label, bool value, Function(bool) onChanged) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500)),
+        Switch(value: value, onChanged: onChanged, activeTrackColor: const Color(0xFF9C5A1A)),
+      ],
+    );
+  }
+
+  void _showEditDialog(Map kos) {
+    _nameCtrl.text = kos['name'] ?? '';
+    _priceCtrl.text = (kos['price'] ?? 0).toString();
+    _rulesCtrl.text = kos['rules'] ?? '';
+    _addressCtrl.text = kos['address'] ?? '';
+    bool editListrik = kos['include_electricity'] == true;
+    bool editAir = kos['include_water'] == true;
+    bool editWifi = kos['include_wifi'] == true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFFFFFBF7),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text("Edit Informasi Unit", style: GoogleFonts.sora(fontWeight: FontWeight.w700, color: const Color(0xFF9C5A1A))),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildEditField(_nameCtrl, "Nama Kost", Icons.home),
+                _buildEditField(_priceCtrl, "Harga/Bulan", Icons.payments, isNumber: true),
+                const Divider(),
+                _buildEditToggle("Include Listrik", editListrik, (v) => setModalState(() => editListrik = v)),
+                _buildEditToggle("Include Air", editAir, (v) => setModalState(() => editAir = v)),
+                _buildEditToggle("Include WiFi", editWifi, (v) => setModalState(() => editWifi = v)),
+                const Divider(),
+                _buildEditField(_rulesCtrl, "Peraturan", Icons.gavel, maxLines: 2),
+                _buildEditField(_addressCtrl, "Alamat", Icons.location_on, maxLines: 2),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white),
+              onPressed: () => _updateKost(kos, editListrik, editAir, editWifi),
+              child: const Text("Simpan"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateKost(Map oldData, bool newListrik, bool newAir, bool newWifi) async {
+    try {
+      await supabase.from('kosts').update({
+        'name': _nameCtrl.text.trim(),
+        'price': int.tryParse(_priceCtrl.text) ?? 0,
+        'rules': _rulesCtrl.text.trim(),
+        'address': _addressCtrl.text.trim(),
+        'include_electricity': newListrik,
+        'include_water': newAir,
+        'include_wifi': newWifi,
+      }).eq('id', oldData['id']);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Update"), backgroundColor: Colors.green));
+        fetchDashboard();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red));
+    }
+  }
 
   Widget _buildIncludeChip(String label, bool isIncluded, IconData icon) {
     return Container(
@@ -340,153 +644,6 @@ void _showDetailDialog(Map kos) {
           Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF2E8DA), borderRadius: BorderRadius.circular(10)), child: Text(value ?? '-', style: GoogleFonts.plusJakartaSans(fontSize: 13))),
         ],
       ),
-    );
-  }
-
-  // --- REUSABLE DASHBOARD CARDS ---
-
-  Widget _summaryCard(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFF9C5A1A), borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white60, size: 24),
-          const SizedBox(height: 8),
-          Text(value, style: GoogleFonts.sora(fontSize: 32, color: Colors.white, fontWeight: FontWeight.w800)),
-          Text(title, style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _profitCard(String profit) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFF2D241A), borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        children: [
-          const Icon(Icons.account_balance_wallet_rounded, color: Colors.amber, size: 32),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Total Profit Bulan Ini", style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12)),
-              Text(profit, style: GoogleFonts.sora(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.5))),
-      child: Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: color)),
-    );
-  }
-
-  Widget _miniInfo(IconData icon, String label) {
-    return Row(children: [Icon(icon, size: 14, color: Colors.grey), const SizedBox(width: 4), Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey.shade600))]);
-  }
-
-  // --- UPDATE & EDIT LOGIC ---
-
-  void _showEditDialog(Map kos) {
-    _nameCtrl.text = kos['name'] ?? '';
-    _priceCtrl.text = (kos['price'] ?? 0).toString();
-    _rulesCtrl.text = kos['rules'] ?? '';
-    _addressCtrl.text = kos['address'] ?? '';
-    bool editListrik = kos['include_electricity'] == true;
-    bool editAir = kos['include_water'] == true;
-    bool editWifi = kos['include_wifi'] == true;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          backgroundColor: const Color(0xFFFFFBF7),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text("Edit Informasi Unit", style: GoogleFonts.sora(fontWeight: FontWeight.w700, color: const Color(0xFF9C5A1A))),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildEditField(_nameCtrl, "Nama Kost", Icons.home),
-                _buildEditField(_priceCtrl, "Harga/Bulan", Icons.payments, isNumber: true),
-                const Divider(),
-                _buildEditToggle("Include Listrik", editListrik, (v) => setModalState(() => editListrik = v)),
-                _buildEditToggle("Include Air", editAir, (v) => setModalState(() => editAir = v)),
-                _buildEditToggle("Include WiFi", editWifi, (v) => setModalState(() => editWifi = v)),
-                const Divider(),
-                _buildEditField(_rulesCtrl, "Peraturan", Icons.gavel, maxLines: 2),
-                _buildEditField(_addressCtrl, "Alamat", Icons.location_on, maxLines: 2),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white),
-              onPressed: () => _updateKost(kos, editListrik, editAir, editWifi),
-              child: const Text("Simpan"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _updateKost(Map oldData, bool newListrik, bool newAir, bool newWifi) async {
-    try {
-      await supabase.from('kosts').update({
-        'name': _nameCtrl.text.trim(),
-        'price': int.tryParse(_priceCtrl.text) ?? 0,
-        'rules': _rulesCtrl.text.trim(),
-        'address': _addressCtrl.text.trim(),
-        'include_electricity': newListrik,
-        'include_water': newAir,
-        'include_wifi': newWifi,
-      }).eq('id', oldData['id']);
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Update"), backgroundColor: Colors.green));
-        fetchDashboard();
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red));
-    }
-  }
-
-  Widget _buildEditField(TextEditingController ctrl, String label, IconData icon, {bool isNumber = false, int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: ctrl,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: const Color(0xFF9C5A1A), size: 20),
-          filled: true, fillColor: const Color(0xFFF5F0EA),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEditToggle(String label, bool value, Function(bool) onChanged) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500)),
-        Switch(value: value, onChanged: onChanged, activeTrackColor: const Color(0xFF9C5A1A)),
-      ],
     );
   }
 }

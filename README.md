@@ -26,10 +26,10 @@ Tujuan aplikasi ini adalah meningkatkan kedisiplinan pembayaran penghuni serta m
 # 💻 Teknologi Yang Digunakan
 Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara tertata dan efisien. Pemilihan teknologi difokuskan agar program mudah dikembangkan dan aman, diantaranya yaitu :
 
-1. **Bahasa Pemrograman:** Dart — Bahasa utama di balik framework Flutter yang cepat dan efisien.
-2. **Framework UI:** Flutter — Memungkinkan tampilan aplikasi yang cantik dan responsif di berbagai perangkat.
-3. **Backend & Database:** Supabase (PostgreSQL) — Digunakan untuk manajemen database relasional, autentikasi, dan penyimpanan data secara *real-time*.
-4. **Arsitektur Program:** Layered Architecture (Role-Based) — Proyek ini menggunakan struktur berlapis yang memisahkan tanggung jawab kode berdasarkan peran pengguna dan fungsionalitas:
+1. **Bahasa Pemrograman:** Dart = Bahasa utama di balik framework Flutter yang cepat dan efisien.
+2. **Framework UI:** Flutter = Memungkinkan tampilan aplikasi yang cantik dan responsif di berbagai perangkat.
+3. **Backend & Database:** Supabase (PostgreSQL) = Digunakan untuk manajemen database relasional, autentikasi, dan penyimpanan data secara *real-time*.
+4. **Arsitektur Program:** Layered Architecture (Role-Based) = Proyek ini menggunakan struktur berlapis yang memisahkan tanggung jawab kode berdasarkan peran pengguna dan fungsionalitas:
 
     - Data Layer (Services): Seluruh logika integrasi dengan database dan autentikasi dipusatkan pada folder services (contoh: supabase_service.dart).
 

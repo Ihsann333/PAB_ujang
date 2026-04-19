@@ -33,7 +33,7 @@ Future<void> fetchTenants() async {
       final List ids = (myKosts as List).map((k) => k['id']).toList();
 
       if (ids.isEmpty) {
-        if (mounted) setState(() => { tenants = [], isLoading = false });
+        if (mounted) setState(() { tenants = []; isLoading = false; });
         return;
       }
 
