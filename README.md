@@ -26,38 +26,39 @@ Tujuan aplikasi ini adalah meningkatkan kedisiplinan pembayaran penghuni serta m
 # 💻 Teknologi Yang Digunakan
 Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara tertata dan efisien. Pemilihan teknologi difokuskan agar program mudah dikembangkan dan aman, diantaranya yaitu :
 
-1. Bahasa Pemrograman: Java dengan OOP, membuat kode modular dan mudah dikembangkan
-2. ncjwned: wencdwe
-3. wjdncw: wenweuncwe
-4. wjecnwe: wncewwjned
-5. wjendwend: iwediwned
+1. **Bahasa Pemrograman:** Dart — Bahasa utama di balik framework Flutter yang cepat dan efisien.
+2. **Framework UI:** Flutter — Memungkinkan tampilan aplikasi yang cantik dan responsif di berbagai perangkat.
+3. **Backend & Database:** Supabase (PostgreSQL) — Digunakan untuk manajemen database relasional, autentikasi, dan penyimpanan data secara *real-time*.
+4. **Arsitektur Program:** MVC (Model-View-Controller) — Memisahkan logika bisnis, data, dan tampilan agar kode mudah dikelola dan dikembangkan.
+5. **Version Control:** Git & GitHub — Digunakan untuk kolaborasi tim dan pelacakan perubahan kode.
 
 
 # 📱 Fitur - Fitur Utama Program
 
-🔹 Fitur untuk User (Penghuni Kost)
+### 🔹 Fitur untuk User (Penghuni Kost)
+* **Login via Join Code:** Mengakses sistem pengelolaan kost secara instan menggunakan kode unik yang diberikan oleh Owner.
+* **Detail Kost:** Melihat fasilitas, alamat, dan peraturan kost secara lengkap.
+* **Status Pembayaran:** Memantau status tagihan bulan ini (Lunas/Belum Bayar).
+* **Notifikasi Pengingat Otomatis:** Sistem peringatan dini yang memberitahu penghuni saat mendekati tanggal jatuh tempo pembayaran.
+* **Pusat Informasi & Broadcast:** Menerima pengumuman atau instruksi khusus secara langsung dari Owner terkait operasional kost.
 
-    Login: Melakukan login dengan memasukkan kode yang diberikan oleh admin
+### 🔹 Fitur untuk Owner (Pemilik Kost)
+* **Manajemen Properti Kost:** Kendali penuh untuk menambah, memperbarui, atau menghapus data kost serta mengelola kapasitas kamar.
+* **Verifikasi Penghuni:** Melakukan validasi dan persetujuan (approve) terhadap calon penghuni yang mendaftar menggunakan kode akses.
+* **Dashboard Pembayaran:** Memantau daftar penghuni yang sudah membayar atau yang masih menunggak.
+* **Generate Kode Join:** Membuat kode unik untuk diberikan kepada calon penghuni baru.
 
-
-🔹 Fitur untuk Owner (Pemilik Kost)
-
-    wjcnwienf: wjncijwefhwe
-    
-
-🔹 Fitur untuk Admin (Pengelola Aplikasi)
-
-    wjifniuewrbfu3: wjecnwien
-
+### 🔹 Fitur untuk Admin (Pengelola Sistem)
+* **Verifikasi Owner & Kost:** Memastikan pemilik kost yang mendaftar adalah pengguna valid.
+* **Monitoring Global:** Mengelola basis data pengguna dan memastikan keamanan sistem secara keseluruhan.
+* **Monitoring Global:** Mengawasi seluruh basis data pengguna dan lalu lintas sistem untuk menjaga stabilitas serta keamanan aplikasi secara menyeluruh.
 
 # 📲 Widget Yang Digunakan
+Aplikasi ini dibangun menggunakan berbagai widget Flutter untuk fungsionalitas maksimal:
 
-
-
-    
-
-
-
-
-
-
+* **TextFormField:** Untuk input data akun, nominal harga, dan alamat kost.
+* **DropdownButton:** Digunakan untuk memilih daftar kost yang dikelola oleh owner.
+* **CheckboxListTile:** Mempermudah pemilihan fasilitas kost (Listrik, Air, WiFi).
+* **ListView & ListTile:** Menampilkan daftar penghuni dan riwayat transaksi secara rapi.
+* **SnackBar:** Memberikan umpan balik instan jika registrasi atau pembayaran berhasil/gagal.
+* **Google Fonts:** Menggunakan font *Plus Jakarta Sans* untuk tampilan yang modern dan profesional.
