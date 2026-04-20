@@ -182,6 +182,37 @@ Package ini berperan penting dalam internasionalisasi dan lokalisasi data. Digun
   <img src="image-2.png" width="300"/>
 </p>
 
+## 🔹 Dashboard Admin
+<p align="center">
+  <img src="image-3.png" width="300"/>
+</p>
+
+## 🔹 Approve Admin
+<p align="center">
+  <img src="image-4.png" width="300"/>
+</p>
+
+## 🔹 Dashboard Owner
+<p align="center">
+  <img src="image-5.png" width="300"/>
+</p>
+
+## 🔹 Tampilan Reminder
+<p align="center">
+  <img src="image-6.png" width="300"/>
+</p>
+
+## 🔹 Profil Owner
+<p align="center">
+  <img src="image-7.png" width="300"/>
+</p>
+
+## 🔹 Dashboard Penghuni
+<p align="center">
+  <img src="image-8.png" width="300"/>
+</p>
+
+
 ---
 
 
