@@ -13,6 +13,7 @@ class UserHomePage extends StatefulWidget {
 
 class _UserHomePageState extends State<UserHomePage> {
   static const String _kostPrefix = '[KOSTLY_KOST]';
+  static const String _tenantPrefix = '[KOSTLY_TENANT]';
   static const String _titlePrefix = '[KOSTLY_TITLE]';
   static const String _bodyPrefix = '[KOSTLY_BODY]';
 
@@ -71,7 +72,7 @@ class _UserHomePageState extends State<UserHomePage> {
         }
 
         reminderData = reminderData
-            .where((r) => _isReminderForThisKost(r, kosId))
+            .where((r) => _isReminderForThisUserAndKost(r, kosId, user.id))
             .toList();
 
         if (mounted) {
@@ -112,10 +113,14 @@ class _UserHomePageState extends State<UserHomePage> {
     return false;
   }
 
-  bool _isReminderForThisKost(Map reminder, String currentKostId) {
+  bool _isReminderForThisUserAndKost(
+    Map reminder,
+    String currentKostId,
+    String currentUserId,
+  ) {
     final directKost = reminder['kost_id']?.toString();
     if (directKost != null && directKost.isNotEmpty) {
-      return directKost == currentKostId;
+      if (directKost != currentKostId) return false;
     }
 
     for (final field in ['message', 'pesan']) {
@@ -124,7 +129,12 @@ class _UserHomePageState extends State<UserHomePage> {
         final parsed = _parsePackedMessage(raw);
         final packedKostId = parsed?['kost_id'];
         if (packedKostId != null && packedKostId.isNotEmpty) {
-          return packedKostId == currentKostId;
+          if (packedKostId != currentKostId) return false;
+        }
+
+        final packedTenantId = parsed?['tenant_id'];
+        if (packedTenantId != null && packedTenantId.isNotEmpty) {
+          return packedTenantId == currentUserId;
         }
       }
     }
@@ -138,23 +148,35 @@ class _UserHomePageState extends State<UserHomePage> {
     }
 
     String? kostId;
-    if (raw.startsWith(_kostPrefix)) {
-      final titleStart = raw.indexOf(_titlePrefix);
-      if (titleStart > _kostPrefix.length) {
-        kostId = raw.substring(_kostPrefix.length, titleStart);
-      }
-    }
-
+    String? tenantId;
     final titleIndex = raw.indexOf(_titlePrefix);
     final bodyIndex = raw.indexOf(_bodyPrefix);
     if (titleIndex < 0 || bodyIndex < 0 || bodyIndex <= titleIndex) {
       return null;
     }
 
+    if (raw.startsWith(_kostPrefix)) {
+      final tenantIndex = raw.indexOf(_tenantPrefix, _kostPrefix.length);
+      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
+        kostId = raw.substring(_kostPrefix.length, tenantIndex);
+        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+      } else if (titleIndex > _kostPrefix.length) {
+        kostId = raw.substring(_kostPrefix.length, titleIndex);
+      }
+    }
+
+    if (tenantId == null) {
+      final tenantIndex = raw.indexOf(_tenantPrefix);
+      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
+        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+      }
+    }
+
     final title = raw.substring(titleIndex + _titlePrefix.length, bodyIndex);
     final body = raw.substring(bodyIndex + _bodyPrefix.length);
     final result = {'title': title, 'body': body};
     if (kostId != null && kostId.isNotEmpty) result['kost_id'] = kostId;
+    if (tenantId != null && tenantId.isNotEmpty) result['tenant_id'] = tenantId;
     return result;
   }
 

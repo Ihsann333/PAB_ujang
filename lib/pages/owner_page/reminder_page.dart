@@ -14,22 +14,30 @@ class _ReminderPageState extends State<ReminderPage> {
   static const String _titlePrefix = '[KOSTLY_TITLE]';
   static const String _bodyPrefix = '[KOSTLY_BODY]';
   static const String _kostPrefix = '[KOSTLY_KOST]';
+  static const String _tenantPrefix = '[KOSTLY_TENANT]';
 
   final supabase = SupabaseService.client;
+  final currency = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
   final TextEditingController _titleCtrl = TextEditingController();
   final TextEditingController _msgCtrl = TextEditingController();
 
   List myKosts = [];
   String? selectedKostId;
   bool isSending = false;
+  String? activeLateReminderTenantId;
   List reminders = [];
+  List paymentNotifications = [];
   bool isLoadingReminders = true;
+  bool isLoadingPayments = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchMyKosts();
-    fetchReminders();
+    _refreshPage();
   }
 
   @override
@@ -37,6 +45,12 @@ class _ReminderPageState extends State<ReminderPage> {
     _titleCtrl.dispose();
     _msgCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshPage() async {
+    await _fetchMyKosts();
+    await fetchReminders();
+    await fetchPaymentNotifications();
   }
 
   Future<void> _fetchMyKosts() async {
@@ -95,6 +109,216 @@ class _ReminderPageState extends State<ReminderPage> {
     } catch (e) {
       if (mounted) setState(() => isLoadingReminders = false);
     }
+  }
+
+  Future<void> fetchPaymentNotifications() async {
+    if (!mounted) return;
+    setState(() => isLoadingPayments = true);
+
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        if (mounted) {
+          setState(() {
+            paymentNotifications = [];
+            isLoadingPayments = false;
+          });
+        }
+        return;
+      }
+
+      final now = DateTime.now();
+      final kostData = await supabase
+          .from('kosts')
+          .select('id,name,price')
+          .eq('owner_id', userId);
+      final List kosts = kostData as List;
+      final List kostIds = kosts.map((k) => k['id']).toList();
+
+      if (kostIds.isEmpty) {
+        if (mounted) {
+          setState(() {
+            paymentNotifications = [];
+            isLoadingPayments = false;
+          });
+        }
+        return;
+      }
+
+      final profiles = await supabase
+          .from('profiles')
+          .select('''
+            id,
+            full_name,
+            email,
+            phone_number,
+            created_at,
+            kost_id,
+            kosts:kost_id (
+              name,
+              price
+            )
+          ''')
+          .inFilter('kost_id', kostIds);
+
+      final payments = await supabase
+          .from('payments')
+          .select('*')
+          .eq('month', now.month)
+          .eq('year', now.year)
+          .inFilter('kost_id', kostIds)
+          .order('created_at', ascending: false);
+
+      final Map<String, Map<String, dynamic>> paymentByTenant = {};
+      for (final rawPayment in payments as List) {
+        final payment = Map<String, dynamic>.from(rawPayment as Map);
+        final tenantId =
+            (payment['tenant_id'] ?? payment['profile_id'])?.toString();
+        if (tenantId == null ||
+            tenantId.isEmpty ||
+            paymentByTenant.containsKey(tenantId)) {
+          continue;
+        }
+        paymentByTenant[tenantId] = payment;
+      }
+
+      final List<Map<String, dynamic>> enriched = [];
+      for (final rawProfile in profiles as List) {
+        final profile = Map<String, dynamic>.from(rawProfile as Map);
+        final tenantId = profile['id']?.toString();
+        if (tenantId == null || tenantId.isEmpty) continue;
+
+        final payment = paymentByTenant[tenantId];
+        if (!_shouldShowLatePaymentReminder(profile, payment, now)) continue;
+
+        final dueDate = _tenantDueDate(profile, now);
+        if (dueDate == null) continue;
+
+        final kost = profile['kosts'];
+        final email = profile['email']?.toString().trim();
+
+        enriched.add({
+          if (payment != null) ...payment,
+          'tenant_id': tenantId,
+          'tenant_name': _tenantDisplayName(profile),
+          'tenant_email': email ?? '-',
+          'tenant_phone': profile['phone_number'] ?? '-',
+          'kost_id': profile['kost_id'],
+          'kost_name': kost is Map && kost['name'] != null
+              ? kost['name'].toString()
+              : 'Unit Kost',
+          'amount': payment?['amount'] ??
+              (kost is Map ? (kost['price'] as num?)?.toInt() : 0) ??
+              0,
+          'month': now.month,
+          'year': now.year,
+          'due_date': dueDate.toIso8601String(),
+          'late_days': _dateOnly(now).difference(dueDate).inDays,
+          'payment_status': payment?['status'],
+        });
+      }
+
+      enriched.sort((a, b) {
+        final lateCompare =
+            ((b['late_days'] as num?)?.toInt() ?? 0).compareTo(
+          (a['late_days'] as num?)?.toInt() ?? 0,
+        );
+        if (lateCompare != 0) return lateCompare;
+        return (a['tenant_name']?.toString() ?? '').compareTo(
+          b['tenant_name']?.toString() ?? '',
+        );
+      });
+
+      if (mounted) {
+        setState(() {
+          paymentNotifications = enriched;
+          isLoadingPayments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          paymentNotifications = [];
+          isLoadingPayments = false;
+        });
+      }
+    }
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  bool _isPaidOrPending(String? status) {
+    if (status == null || status.isEmpty) return false;
+    return status == 'pending' ||
+        status == 'approved' ||
+        status == 'success' ||
+        status == 'paid';
+  }
+
+  DateTime? _tenantDueDate(Map<String, dynamic> tenant, DateTime reference) {
+    final raw = tenant['created_at'];
+    if (raw == null) return null;
+
+    final parsed = DateTime.tryParse(raw.toString());
+    if (parsed == null) return null;
+
+    final day = parsed.toLocal().day;
+    final lastDay = DateUtils.getDaysInMonth(reference.year, reference.month);
+    final dueDay = day > lastDay ? lastDay : day;
+    return DateTime(reference.year, reference.month, dueDay);
+  }
+
+  String _tenantDisplayName(Map<String, dynamic> tenant) {
+    final fullName = tenant['full_name']?.toString().trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+
+    final email = tenant['email']?.toString().trim();
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
+
+    return 'Penghuni';
+  }
+
+  bool _shouldShowLatePaymentReminder(
+    Map<String, dynamic> tenant,
+    Map<String, dynamic>? payment,
+    DateTime now,
+  ) {
+    final dueDate = _tenantDueDate(tenant, now);
+    if (dueDate == null) return false;
+    if (!_dateOnly(now).isAfter(dueDate)) return false;
+
+    final status = payment?['status']?.toString().toLowerCase();
+    return !_isPaidOrPending(status);
+  }
+
+  String _latePaymentDueLabel(Map<String, dynamic> payment) {
+    final raw = payment['due_date'];
+    if (raw == null) return '-';
+
+    final parsed = DateTime.tryParse(raw.toString());
+    if (parsed == null) return '-';
+
+    return DateFormat('dd MMM yyyy', 'id_ID').format(parsed.toLocal());
+  }
+
+  String _latePaymentAgeLabel(Map<String, dynamic> payment) {
+    final lateDays = (payment['late_days'] as num?)?.toInt() ?? 0;
+    if (lateDays <= 0) return 'Jatuh tempo hari ini';
+    if (lateDays == 1) return 'Terlambat 1 hari';
+    return 'Terlambat $lateDays hari';
+  }
+
+  String _latePaymentDescription(Map<String, dynamic> payment) {
+    final status = payment['payment_status']?.toString().toLowerCase();
+    if (status == 'rejected') {
+      return 'Pembayaran sebelumnya ditolak dan belum ada pengajuan ulang.';
+    }
+
+    return 'Belum ada pembayaran yang masuk setelah melewati jatuh tempo.';
   }
   
 
@@ -184,7 +408,7 @@ Future<void> sendReminder() async {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("✅ Reminder berhasil dikirim ke penghuni"),
+            content: Text("Reminder berhasil dikirim ke penghuni"),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -199,6 +423,71 @@ Future<void> sendReminder() async {
       }
     } finally {
       if (mounted) setState(() => isSending = false);
+    }
+  }
+
+  Future<void> _sendLatePaymentReminder(Map<String, dynamic> payment) async {
+    final ownerId = supabase.auth.currentUser?.id;
+    final kostId = payment['kost_id']?.toString();
+    final tenantId = payment['tenant_id']?.toString();
+
+    if (ownerId == null || kostId == null || tenantId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data reminder tidak lengkap.')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => activeLateReminderTenantId = tenantId);
+    }
+
+    try {
+      final title = 'Pengingat Pembayaran Kost';
+      final text =
+          'Halo ${payment['tenant_name']}, pembayaran kost untuk '
+          '${_paymentPeriodLabel(payment)} sudah melewati jatuh tempo '
+          '${_latePaymentDueLabel(payment)}. Mohon segera melakukan pembayaran '
+          'sebesar ${currency.format(payment['amount'] ?? 0)}.';
+      final packedText = _packTitleAndMessage(
+        title,
+        text,
+        kostId,
+        tenantId: tenantId,
+      );
+
+      await supabase.from('reminders').insert({
+        'owner_id': ownerId,
+        'kost_id': kostId,
+        'title': title,
+        'message': packedText,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Reminder berhasil dikirim ke ${payment['tenant_name']}.',
+            ),
+          ),
+        );
+      }
+
+      await fetchReminders();
+      await fetchPaymentNotifications();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal kirim reminder: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => activeLateReminderTenantId = null);
+      }
     }
   }
 
@@ -244,6 +533,33 @@ Future<void> sendReminder() async {
     if (raw == null) return '--:--';
     final parsed = DateTime.tryParse(raw.toString());
     if (parsed == null) return '--:--';
+    final local = parsed.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDay = DateTime(local.year, local.month, local.day);
+    final dayDiff = today.difference(targetDay).inDays;
+
+    if (dayDiff <= 0) return DateFormat('HH:mm').format(local);
+    if (dayDiff == 1) return 'Kemarin';
+    return DateFormat('dd/MM/yy').format(local);
+  }
+
+  String _paymentPeriodLabel(Map payment) {
+    final month = payment['month'];
+    final year = payment['year'];
+    if (month is int && year is int) {
+      return DateFormat('MMMM yyyy', 'id_ID').format(DateTime(year, month));
+    }
+    return 'bulan ini';
+  }
+
+  String _paymentTimeLabel(Map payment) {
+    final raw = payment['created_at'] ?? payment['updated_at'];
+    if (raw == null) return '--';
+
+    final parsed = DateTime.tryParse(raw.toString());
+    if (parsed == null) return '--';
+
     final local = parsed.toLocal();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -417,31 +733,254 @@ Future<void> sendReminder() async {
     }
   }
 
-  String _packTitleAndMessage(String title, String message, String kostId) {
-    return '$_kostPrefix$kostId$_titlePrefix$title$_bodyPrefix$message';
+  String _packTitleAndMessage(
+    String title,
+    String message,
+    String kostId, {
+    String? tenantId,
+  }) {
+    final tenantChunk = tenantId != null && tenantId.isNotEmpty
+        ? '$_tenantPrefix$tenantId'
+        : '';
+    return '$_kostPrefix$kostId$tenantChunk$_titlePrefix$title$_bodyPrefix$message';
   }
 
   Map<String, String>? _parsePackedMessage(String raw) {
     if (!raw.contains(_titlePrefix) || !raw.contains(_bodyPrefix)) return null;
 
-    String work = raw;
     String? kostId;
-    if (work.startsWith(_kostPrefix)) {
-      final titleStart = work.indexOf(_titlePrefix);
-      if (titleStart > _kostPrefix.length) {
-        kostId = work.substring(_kostPrefix.length, titleStart);
+    String? tenantId;
+    final titleIndex = raw.indexOf(_titlePrefix);
+    final bodyIndex = raw.indexOf(_bodyPrefix);
+    if (titleIndex < 0 || bodyIndex < 0 || bodyIndex <= titleIndex) return null;
+
+    if (raw.startsWith(_kostPrefix)) {
+      final tenantIndex = raw.indexOf(_tenantPrefix, _kostPrefix.length);
+      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
+        kostId = raw.substring(_kostPrefix.length, tenantIndex);
+        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+      } else if (titleIndex > _kostPrefix.length) {
+        kostId = raw.substring(_kostPrefix.length, titleIndex);
       }
     }
 
-    final titleIndex = work.indexOf(_titlePrefix);
-    final bodyIndex = work.indexOf(_bodyPrefix);
-    if (titleIndex < 0 || bodyIndex < 0 || bodyIndex <= titleIndex) return null;
+    if (tenantId == null) {
+      final tenantIndex = raw.indexOf(_tenantPrefix);
+      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
+        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+      }
+    }
 
-    final title = work.substring(titleIndex + _titlePrefix.length, bodyIndex);
-    final body = work.substring(bodyIndex + _bodyPrefix.length);
+    final title = raw.substring(titleIndex + _titlePrefix.length, bodyIndex);
+    final body = raw.substring(bodyIndex + _bodyPrefix.length);
     final result = {'title': title, 'body': body};
     if (kostId != null && kostId.isNotEmpty) result['kost_id'] = kostId;
+    if (tenantId != null && tenantId.isNotEmpty) result['tenant_id'] = tenantId;
     return result;
+  }
+
+  Widget _buildPaymentNotificationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Pembayaran Terlambat",
+                style: GoogleFonts.sora(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2D241A),
+                ),
+              ),
+            ),
+            if (paymentNotifications.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE7C8),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  "${paymentNotifications.length} tenant",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF9C5A1A),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (isLoadingPayments)
+          const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
+        else if (paymentNotifications.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFCF7),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFEADBC9)),
+            ),
+            child: Text(
+              "Belum ada tenant yang telat bayar lewat jatuh tempo bulan ini.",
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF6B6257),
+                height: 1.45,
+              ),
+            ),
+          )
+        else
+          ...paymentNotifications.map(
+            (rawPayment) => _buildPaymentNotificationCard(
+              Map<String, dynamic>.from(rawPayment as Map),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentNotificationCard(Map<String, dynamic> payment) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF7),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEADBC9)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A3A17).withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE7C8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: Color(0xFF9C5A1A),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      payment['tenant_name']?.toString() ?? 'Penghuni',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF2D241A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${payment['kost_name']} • ${_paymentPeriodLabel(payment)}",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: const Color(0xFF6B6257),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _latePaymentDescription(payment),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: const Color(0xFF5A5043),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _latePaymentAgeLabel(payment),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF7A6A58),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F0E4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.event_busy_rounded,
+                  color: Color(0xFF9C5A1A),
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Jatuh tempo",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: const Color(0xFF6B6257),
+                    ),
+                  ),
+                ),
+                Text(
+                  _latePaymentDueLabel(payment),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF2D241A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: activeLateReminderTenantId != null
+                  ? null
+                  : () => _sendLatePaymentReminder(payment),
+              icon: const Icon(Icons.notifications_active_rounded, size: 18),
+              label: Text(
+                activeLateReminderTenantId == payment['tenant_id']?.toString()
+                    ? "Mengirim..."
+                    : "Kirim Notifikasi",
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9C5A1A),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -449,9 +988,12 @@ Future<void> sendReminder() async {
     return Scaffold(
       backgroundColor: const Color(0xFFF2E8DA),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+        child: RefreshIndicator(
+          onRefresh: _refreshPage,
+          color: const Color(0xFF9C5A1A),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
             Text(
               "Kirim Reminder",
               style: GoogleFonts.sora(
@@ -461,6 +1003,8 @@ Future<void> sendReminder() async {
               ),
             ),
             const SizedBox(height: 18),
+            _buildPaymentNotificationSection(),
+            const SizedBox(height: 28),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -580,7 +1124,7 @@ Future<void> sendReminder() async {
             ),
             const SizedBox(height: 10),
             if (isLoadingReminders)
-              const Center(child: CircularProgressIndicator())
+              const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
             else if (reminders.isEmpty)
               Center(child: Text("Belum ada reminder", style: GoogleFonts.plusJakartaSans()))
             else
@@ -713,7 +1257,8 @@ Future<void> sendReminder() async {
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     ); 
