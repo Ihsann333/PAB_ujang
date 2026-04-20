@@ -12,27 +12,11 @@
 
 # 👩‍💻 Kontributor 
 
-<p align="center">
-  <img width="200" src="https://github.com/user-attachments/assets/7bdac3b8-192a-4b55-aa67-82896456fc92" />
-  <img width="200" src="https://github.com/user-attachments/assets/886a16f4-a08a-4410-aaf8-39c80ea7c983" />
-  <img width="200" src="https://github.com/user-attachments/assets/813259fa-ef54-42c6-b30d-8b8294c346f4" />
-</p>
-
-<p align="center">
-  <b>Rini Wulandari</b> &nbsp; | &nbsp;
-  <b>Nur Ihsan</b> &nbsp; | &nbsp;
-  <b>Alvionej</b>
-</p>
-
-<p align="center">
-  2409116048 &nbsp; | &nbsp;
-  2409116051 &nbsp; | &nbsp;
-  2409116073
-</p>
-
-<p align="center">
-  Sistem Informasi B '24
-</p>
+| Rini Wulandari | Nur Ihsan | Alvionej|
+|---------------|------------|-------------|
+|<img width="1967" height="1967" alt="Profil1_" src="https://github.com/user-attachments/assets/7bdac3b8-192a-4b55-aa67-82896456fc92" />| <img width="2640" height="2640" alt="DSC05291 JPG" src="https://github.com/user-attachments/assets/886a16f4-a08a-4410-aaf8-39c80ea7c983" /> | <img width="3610" height="3610" alt="DSCF7771 JPG" src="https://github.com/user-attachments/assets/813259fa-ef54-42c6-b30d-8b8294c346f4" /> |
+| 2409116048 | 2409116051 | 2409116073 |
+| Sistem Informasi B '24 | Sistem Informasi B '24 |  Sistem Informasi B '24 |
 
 ---
 
@@ -152,37 +136,6 @@ Aplikasi ini dibangun menggunakan berbagai widget Flutter untuk fungsionalitas m
 7. **CircularProgressIndicator:**  
    Memberikan umpan balik visual berupa indikator pemuatan (loading) yang berputar saat aplikasi sedang melakukan sinkronisasi data dengan Supabase atau selama proses pengiriman reminder.
 
-<<<<<<< HEAD
-### Fitur registrasi
-1. **Registrasi Owner:** 
-![alt text](image-1.png)
-
-2. **Registrasi Penghuni:** 
-![alt text](image-2.png)
-
-### Fitur Admin
-1. **Halaman Monitor Admin:**
-![alt text](image-3.png)
-
-2. **Halaman Approval Admin:**
-![alt text](image-4.png)
-
-### FItur Owner
-1. **Dashboard Owner:**
-![alt text](image-5.png)
-
-2. **Halaman Reminder Owner:**
-![alt text](image-6.png)
-
-3. **Halaman Profile Owner**
-![alt text](image-7.png)
-
-### Fitur User
-1. **Halaman Home User:**
-![alt text](image-8.png)
-
-2. **Halaman Reminder User:**
-=======
 8. **SingleChildScrollView:**  
    Widget yang memungkinkan seluruh tampilan halaman dapat digulir (scrollable), sangat penting untuk mencegah error layout overflow saat pengguna membuka keyboard atau saat konten halaman melebihi ukuran layar perangkat.
 
@@ -216,21 +169,20 @@ Package ini berperan penting dalam internasionalisasi dan lokalisasi data. Digun
 
 ## 🔹 Fitur Awal
 <p align="center">
-  <img src="image.png" width="600"/>
+  <img src="image.png" width="300"/>
 </p>
 
 ## 🔹 Registrasi Owner
 <p align="center">
-  <img src="image-1.png" width="600"/>
+  <img src="image-1.png" width="300"/>
 </p>
 
 ## 🔹 Registrasi Penghuni
 <p align="center">
-  <img src="image-2.png" width="600"/>
+  <img src="image-2.png" width="300"/>
 </p>
 
 ---
 
 
 Aplikasi ini dirancang sebagai solusi digital untuk meningkatkan efisiensi dalam pengelolaan kost, baik dari sisi pemilik maupun penghuni. Dengan adanya fitur-fitur yang terintegrasi, diharapkan aplikasi ini mampu memberikan kemudahan dalam pengelolaan informasi, pembayaran, serta komunikasi secara lebih efektif dan real-time.
->>>>>>> 7e3e1c7f54ff717518bd81401edefeef18240f72
