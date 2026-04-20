@@ -19,13 +19,36 @@ class _LoginPageState extends State<LoginPage> {
   bool _isObscure = true;
 
   Future<void> login() async {
+    FocusScope.of(context).unfocus();
+
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    // 🔥 VALIDASI MANUAL (ANTI TEMBUS)
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar("Semua field wajib diisi", isError: true);
+      return;
+    }
+
+    if (!email.contains('@')) {
+      _showSnackBar("Email harus mengandung tanda @", isError: true);
+      return;
+    }
+
+    if (password.length < 8) {
+      _showSnackBar("Password minimal 8 karakter", isError: true);
+      return;
+    }
+
+    // ✅ OPTIONAL: tetap pakai form validation
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
+
     try {
       final res = await supabase.auth.signInWithPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: email,
+        password: password,
       );
 
       final user = res.user;
@@ -44,11 +67,10 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         if (mounted) {
-          // Navigasi berdasarkan role
           String route = '/user';
           if (profile['role'] == 'admin') route = '/admin';
           if (profile['role'] == 'owner') route = '/owner';
-          
+
           Navigator.pushReplacementNamed(context, route);
         }
       }
@@ -113,28 +135,53 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
-                        _buildTextField(controller: emailController, hint: "Email", icon: Icons.email_outlined),
+                        _buildTextField(
+                          controller: emailController,
+                          hint: "Email",
+                          icon: Icons.email_outlined,
+                          isEmail: true,
+                        ),
                         const SizedBox(height: 16),
-                        _buildTextField(controller: passwordController, hint: "Password", icon: Icons.lock_outline, isPassword: true),
+                        _buildTextField(
+                          controller: passwordController,
+                          hint: "Password",
+                          icon: Icons.lock_outline,
+                          isPassword: true,
+                        ),
                         const SizedBox(height: 24),
-                        
+
                         ElevatedButton(
                           onPressed: isLoading ? null : login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF9C5A1A),
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 52),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             elevation: 0,
                           ),
                           child: isLoading
-                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
                               : Text(
                                   "MASUK",
                                   style: GoogleFonts.plusJakartaSans(
@@ -147,9 +194,9 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 30),
-                
+
                 // REGISTER SECTION (Ini yang tadi kureng)
                 Text(
                   "Belum punya akun? Register sebagai",
@@ -166,7 +213,8 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(
                       child: _buildRegisterButton(
                         label: "Penghuni",
-                        onPressed: () => Navigator.pushNamed(context, '/register-user'),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/register-user'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -174,7 +222,8 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(
                       child: _buildRegisterButton(
                         label: "Owner",
-                        onPressed: () => Navigator.pushNamed(context, '/register-owner'),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/register-owner'),
                         isPrimary: true,
                       ),
                     ),
@@ -189,40 +238,54 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // Helper Button Register biar rapi
-  Widget _buildRegisterButton({required String label, required VoidCallback onPressed, bool isPrimary = false}) {
-    return isPrimary 
-      ? ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF9C5A1A),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            elevation: 0,
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-          ),
-        )
-      : OutlinedButton(
-          onPressed: onPressed,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFF9C5A1A)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: const Color(0xFF9C5A1A),
-              fontWeight: FontWeight.w600,
+  Widget _buildRegisterButton({
+    required String label,
+    required VoidCallback onPressed,
+    bool isPrimary = false,
+  }) {
+    return isPrimary
+        ? ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C5A1A),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 0,
             ),
-          ),
-        );
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
+          )
+        : OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF9C5A1A)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF9C5A1A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon, bool isPassword = false}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    bool isEmail = false,
+  }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword ? _isObscure : false,
@@ -241,15 +304,38 @@ class _LoginPageState extends State<LoginPage> {
         prefixIcon: Icon(icon, color: const Color(0xFF9C5A1A), size: 20),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility, color: Colors.grey, size: 20),
+                icon: Icon(
+                  _isObscure ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 onPressed: () => setState(() => _isObscure = !_isObscure),
               )
             : null,
         filled: true,
         fillColor: const Color(0xFFFDF8F2),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
-      validator: (value) => (value == null || value.isEmpty) ? "Wajib diisi" : null,
+
+      // 🔥 VALIDATOR BARU
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return "Wajib diisi";
+        }
+
+        if (isEmail && !value.contains('@')) {
+          return "Email harus mengandung tanda @";
+        }
+
+        if (isPassword && value.length < 8) {
+          return "Password minimal 8 karakter";
+        }
+
+        return null;
+      },
     );
   }
 
