@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:kostly_pa/pages/admin_page/dashboard.dart';
+import 'package:kostly_pa/auth/register_owner_page.dart';
+import 'package:kostly_pa/auth/register_user_page.dart';
 import 'package:kostly_pa/pages/login_page.dart';
-import 'package:kostly_pa/pages/user_dashboard.dart';
+import 'package:kostly_pa/pages/user_page/dashboard.dart';
+import 'package:kostly_pa/pages/admin_page/dashboard.dart';
 import 'package:kostly_pa/pages/owner_page/dashboard.dart'; 
-import 'auth/register_user_page.dart';
-import 'auth/register_owner_page.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -14,6 +14,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Kostly',
+      theme: ThemeData(
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF1E6D9),
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginPage(),
