@@ -1,0 +1,74 @@
+# KOSTLY ⾕
+
+<p align="center">
+  <img width="400" height="400" alt="Screenshot 2026-04-18 215232" src="https://github.com/user-attachments/assets/87a37505-c024-481c-888f-64d750a6160d" /> 
+  <b>Aplikasi Manajemen Pengingat Kost Berbasis Digital</b>
+</p>
+
+
+
+# 👩‍💻 Kontributor 
+
+| Rini Wulandari | Nur Ihsan | Alvionej|
+|---------------|------------|-------------|
+|<img width="1967" height="1967" alt="Profil1_" src="https://github.com/user-attachments/assets/7bdac3b8-192a-4b55-aa67-82896456fc92" />| <img width="2640" height="2640" alt="DSC05291 JPG" src="https://github.com/user-attachments/assets/886a16f4-a08a-4410-aaf8-39c80ea7c983" /> | <img width="3610" height="3610" alt="DSCF7771 JPG" src="https://github.com/user-attachments/assets/813259fa-ef54-42c6-b30d-8b8294c346f4" /> |
+| 2409116048 | 2409116051 | 2409116073 |
+| Sistem Informasi B '24 | Sistem Informasi B '24 |  Sistem Informasi B '24 |
+
+
+# 🧾 Deskripsi Program
+
+Aplikasi Manajemen Pengingat Kost Berbasis Digital adalah sistem yang dirancang untuk mempermudah pengelolaan kost secara lebih terstruktur dan efisien. Aplikasi ini membantu mengatasi permasalahan seperti keterlambatan pembayaran dan penyampaian informasi yang tidak merata melalui fitur pengingat otomatis dan sistem informasi terpusat.
+
+Tujuan aplikasi ini adalah meningkatkan kedisiplinan pembayaran penghuni serta memudahkan pemilik kost dalam memantau dan mengelola data secara real-time. Selain itu, aplikasi ini juga bertujuan untuk memastikan informasi dapat tersampaikan dengan cepat, merata, dan lebih efektif kepada seluruh penghuni.
+
+
+# 💻 Teknologi Yang Digunakan
+Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara tertata dan efisien. Pemilihan teknologi difokuskan agar program mudah dikembangkan dan aman, diantaranya yaitu :
+
+1. **Bahasa Pemrograman:** Dart = Bahasa utama di balik framework Flutter yang cepat dan efisien.
+2. **Framework UI:** Flutter = Memungkinkan tampilan aplikasi yang cantik dan responsif di berbagai perangkat.
+3. **Backend & Database:** Supabase (PostgreSQL) = Digunakan untuk manajemen database relasional, autentikasi, dan penyimpanan data secara *real-time*.
+4. **Arsitektur Program:** Layered Architecture (Role-Based) = Proyek ini menggunakan struktur berlapis yang memisahkan tanggung jawab kode berdasarkan peran pengguna dan fungsionalitas:
+
+    - Data Layer (Services): Seluruh logika integrasi dengan database dan autentikasi dipusatkan pada folder services (contoh: supabase_service.dart).
+
+    - View & Logic Layer (Pages): Antarmuka pengguna dipisahkan secara modular berdasarkan hak akses di dalam folder pages, yaitu admin_page untuk pengelola sistem dan owner_page untuk pemilik kost.
+
+    - State-Driven Logic: Mengingat efisiensi pengembangan, logika operasional setiap fitur dikelola langsung di dalam state masing-masing halaman (seperti pada reminder_page.dart) untuk memastikan sinkronisasi data yang cepat tanpa memerlukan file controller terpisah.
+5. **Version Control:** Git & GitHub — Digunakan untuk kolaborasi tim dan pelacakan perubahan kode.
+
+
+# 📱 Fitur - Fitur Utama Program
+
+### 🔹 Fitur untuk User (Penghuni Kost)
+* **Login via Join Code:** Mengakses sistem pengelolaan kost secara instan menggunakan kode unik yang diberikan oleh Owner.
+* **Detail Kost:** Melihat fasilitas, alamat, dan peraturan kost secara lengkap.
+* **Status Pembayaran:** Memantau status tagihan bulan ini (Lunas/Belum Bayar).
+* **Notifikasi Pengingat Otomatis:** Sistem peringatan dini yang memberitahu penghuni saat mendekati tanggal jatuh tempo pembayaran.
+* **Pusat Informasi & Broadcast:** Menerima pengumuman atau instruksi khusus secara langsung dari Owner terkait operasional kost.
+
+### 🔹 Fitur untuk Owner (Pemilik Kost)
+* **Manajemen Properti Kost:** Kendali penuh untuk menambah, memperbarui, atau menghapus data kost serta mengelola kapasitas kamar.
+* **Verifikasi Penghuni:** Melakukan validasi dan persetujuan (approve) terhadap calon penghuni yang mendaftar menggunakan kode akses.
+* **Dashboard Pembayaran:** Memantau daftar penghuni yang sudah membayar atau yang masih menunggak.
+* **Generate Kode Join:** Membuat kode unik untuk diberikan kepada calon penghuni baru.
+
+### 🔹 Fitur untuk Admin (Pengelola Sistem)
+* **Verifikasi Owner & Kost:** Memastikan pemilik kost yang mendaftar adalah pengguna valid.
+* **Monitoring Global:** Mengelola basis data pengguna dan memastikan keamanan sistem secara keseluruhan.
+* **Monitoring Global:** Mengawasi seluruh basis data pengguna dan lalu lintas sistem untuk menjaga stabilitas serta keamanan aplikasi secara menyeluruh.
+
+# 📲 Widget Yang Digunakan
+Aplikasi ini dibangun menggunakan berbagai widget Flutter untuk fungsionalitas maksimal:
+
+* **TextFormField:** Untuk input data akun, nominal harga, dan alamat kost.
+* **DropdownButton:** Digunakan untuk memilih daftar kost yang dikelola oleh owner.
+* **CheckboxListTile:** Mempermudah pemilihan fasilitas kost (Listrik, Air, WiFi).
+* **ListView & ListTile:** Menampilkan daftar penghuni dan riwayat transaksi secara rapi.
+* **SnackBar:** Memberikan umpan balik instan jika registrasi atau pembayaran berhasil/gagal.
+* **Google Fonts:** Menggunakan font *Plus Jakarta Sans* untuk tampilan yang modern dan profesional.
+* **CircularProgressIndicator:** Memberikan umpan balik visual berupa indikator pemuatan (loading) yang berputar saat aplikasi sedang melakukan sinkronisasi data dengan Supabase atau selama proses pengiriman reminder.
+* **SingleChildScrollView:** Widget yang memungkinkan seluruh tampilan halaman dapat digulir (scrollable), sangat penting untuk mencegah error layout overflow saat pengguna membuka keyboard atau saat konten halaman melebihi ukuran layar perangkat.
+* **LinearProgressIndicator:** Indikator pemuatan berbentuk garis mendatar, memberikan umpan balik visual yang halus saat proses transisi atau pengiriman data berlangsung.
+* **RefreshIndicator:** Mengimplementasikan fitur "Pull-to-Refresh", memudahkan pengguna untuk memperbarui daftar data (seperti riwayat reminder atau status pembayaran) hanya dengan menarik layar ke bawah.
