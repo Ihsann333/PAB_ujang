@@ -102,7 +102,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
         } else {
           // Jika owner-nya sudah approved tapi unit kosnya belum,
           // kita tetap tampilkan owner tersebut agar unitnya bisa di-approve
-          final ownerData = await supabase.from('profiles').select().eq('id', oId).single();
+          final ownerData = await supabase
+              .from('profiles')
+              .select()
+              .eq('id', oId)
+              .single();
           ownerMap[oId] = Map<String, dynamic>.from(ownerData);
           ownerMap[oId]!['kosts'] = [Map<String, dynamic>.from(kost)];
         }
@@ -125,8 +129,14 @@ class _ApprovalPageState extends State<ApprovalPage> {
     try {
       if (mounted) setState(() => approvingOwnerIds.add(userId));
       await Future.wait([
-        supabase.from('profiles').update({'is_approved': true}).eq('id', userId),
-        supabase.from('kosts').update({'is_approved': true}).eq('owner_id', userId),
+        supabase
+            .from('profiles')
+            .update({'is_approved': true})
+            .eq('id', userId),
+        supabase
+            .from('kosts')
+            .update({'is_approved': true})
+            .eq('owner_id', userId),
       ]);
       fetchOwners();
     } finally {
@@ -137,7 +147,10 @@ class _ApprovalPageState extends State<ApprovalPage> {
   Future<void> handleApproveKost(String kostId) async {
     try {
       if (mounted) setState(() => approvingKostIds.add(kostId));
-      await supabase.from('kosts').update({'is_approved': true}).eq('id', kostId);
+      await supabase
+          .from('kosts')
+          .update({'is_approved': true})
+          .eq('id', kostId);
       fetchOwners();
     } finally {
       if (mounted) setState(() => approvingKostIds.remove(kostId));
@@ -147,8 +160,15 @@ class _ApprovalPageState extends State<ApprovalPage> {
   Future<void> handleRejectOwner(String userId) async {
     try {
       if (mounted) setState(() => rejectingOwnerIds.add(userId));
-      await supabase.from('profiles').update({'role': 'user', 'is_approved': true}).eq('id', userId);
-      await supabase.from('kosts').delete().eq('owner_id', userId).eq('is_approved', false);
+      await supabase
+          .from('profiles')
+          .update({'role': 'user', 'is_approved': true})
+          .eq('id', userId);
+      await supabase
+          .from('kosts')
+          .delete()
+          .eq('owner_id', userId)
+          .eq('is_approved', false);
       fetchOwners();
     } finally {
       if (mounted) setState(() => rejectingOwnerIds.remove(userId));
@@ -169,48 +189,128 @@ class _ApprovalPageState extends State<ApprovalPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            "Konfirmasi Keluar",
-            style: _soraApproval(fontWeight: FontWeight.bold, color: const Color(0xFF4A3428)),
+        return Dialog(
+          backgroundColor: const Color(0xFFFFFBF7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          content: Text(
-            "Apakah Anda yakin ingin keluar dari akun ini?",
-            style: _jakartaApproval(color: const Color(0xFF4A3428), fontWeight: FontWeight.w500),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 🔥 ICON
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout,
+                    color: Colors.redAccent,
+                    size: 26,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // TITLE
+                Text(
+                  "Konfirmasi Keluar",
+                  style: _soraApproval(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: const Color(0xFF4A3428),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // CONTENT
+                Text(
+                  "Apakah Anda yakin ingin keluar dari akun ini?",
+                  textAlign: TextAlign.center,
+                  style: _jakartaApproval(
+                    color: const Color(0xFF4A3428),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // BUTTONS
+                Row(
+                  children: [
+                    // BATAL
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF9C5A1A),
+                          side: const BorderSide(color: Color(0xFF9C5A1A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Batal",
+                          style: _jakartaApproval(
+                            color: const Color(0xFF9C5A1A),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // LOGOUT
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(context);
+
+                          await Future.delayed(
+                            const Duration(milliseconds: 150),
+                          );
+
+                          await supabase.auth.signOut();
+
+                          if (mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: Text(
+                          "Ya, Keluar",
+                          style: _jakartaApproval(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            // Tombol Batal
-            TextButton(
-              onPressed: () => Navigator.pop(context), // Tutup dialog
-              child: Text("Batal", style: _jakartaApproval(color: Colors.grey)),
-            ),
-            // Tombol Konfirmasi Keluar
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-              onPressed: () async {
-                await supabase.auth.signOut();
-                if (mounted) {
-                  // Tutup dialog dulu
-                  Navigator.pop(context);
-                  // Baru pindah ke LoginPage dan hapus semua history page
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-                  );
-                }
-              },
-              child: Text(
-                "Ya, Keluar",
-                style: _jakartaApproval(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
         );
       },
     );
@@ -229,10 +329,17 @@ class _ApprovalPageState extends State<ApprovalPage> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         foregroundColor: const Color(0xFF4A3428),
-        leading: widget.onBack != null ? IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: widget.onBack) : null,
+        leading: widget.onBack != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                onPressed: widget.onBack,
+              )
+            : null,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+            )
           : Column(
               children: [
                 _buildAdminHeader(),
@@ -242,7 +349,8 @@ class _ApprovalPageState extends State<ApprovalPage> {
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: owners.length,
-                          itemBuilder: (context, i) => _buildOwnerCard(owners[i]),
+                          itemBuilder: (context, i) =>
+                              _buildOwnerCard(owners[i]),
                         ),
                 ),
               ],
@@ -257,13 +365,21 @@ class _ApprovalPageState extends State<ApprovalPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10),
+        ],
       ),
       child: Row(
         children: [
           CircleAvatar(
             backgroundColor: const Color(0xFF9C5A1A),
-            child: Text("A", style: _soraApproval(color: Colors.white, fontWeight: FontWeight.w700)),
+            child: Text(
+              "A",
+              style: _soraApproval(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -272,18 +388,29 @@ class _ApprovalPageState extends State<ApprovalPage> {
               children: [
                 Text(
                   "Administrator",
-                  style: _jakartaApproval(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                  style: _jakartaApproval(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   adminEmail ?? "admin@gmail.com",
-                  style: _jakartaApproval(fontWeight: FontWeight.bold, color: const Color(0xFF2D241A)),
+                  style: _jakartaApproval(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2D241A),
+                  ),
                 ),
               ],
             ),
           ),
           IconButton(
             onPressed: handleLogout,
-            icon: const Icon(Icons.power_settings_new, color: Colors.redAccent, size: 24),
+            icon: const Icon(
+              Icons.power_settings_new,
+              color: Colors.redAccent,
+              size: 24,
+            ),
           ),
         ],
       ),
@@ -300,12 +427,17 @@ class _ApprovalPageState extends State<ApprovalPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.brown.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.brown.withOpacity(0.05), blurRadius: 10),
+        ],
       ),
       child: ExpansionTile(
         title: Text(
           item['full_name'] ?? item['email'],
-          style: _jakartaApproval(fontWeight: FontWeight.bold, color: const Color(0xFF4A3428)),
+          style: _jakartaApproval(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF4A3428),
+          ),
         ),
         subtitle: Text(
           item['email'],
@@ -319,7 +451,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
                 if (profilePending) ...[
                   Text(
                     "OWNER BARU: Aktivasi Akun & Kost",
-                    style: _jakartaApproval(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF9C5A1A)),
+                    style: _jakartaApproval(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF9C5A1A),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _buildActionButtons(
@@ -339,7 +475,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
                       const SizedBox(width: 8),
                       Text(
                         "UNIT KOST",
-                        style: _jakartaApproval(fontWeight: FontWeight.w700, fontSize: 10, color: const Color(0xFF2D241A)),
+                        style: _jakartaApproval(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: const Color(0xFF2D241A),
+                        ),
                       ),
                     ],
                   ),
@@ -374,7 +514,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
         children: [
           Text(
             k['name'] ?? 'Unit Kost',
-            style: _jakartaApproval(fontWeight: FontWeight.w800, fontSize: 16, color: const Color(0xFF2D241A)),
+            style: _jakartaApproval(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: const Color(0xFF2D241A),
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -383,7 +527,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
               Expanded(
                 child: Text(
                   k['address'] ?? "Alamat tidak diisi",
-                  style: _jakartaApproval(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                  style: _jakartaApproval(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -415,26 +563,33 @@ class _ApprovalPageState extends State<ApprovalPage> {
               ),
 
               // Kamar (Selalu dianggap true karena pasti ada jumlahnya)
-              _buildFeatureTag(
-                Icons.king_bed,
-                "$rooms Kamar",
-                true,
-              ),
+              _buildFeatureTag(Icons.king_bed, "$rooms Kamar", true),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             "ATURAN KOST:",
-            style: _jakartaApproval(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.brown),
+            style: _jakartaApproval(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: Colors.brown,
+            ),
           ),
           Text(
             k['rules'] ?? "gg",
-            style: _jakartaApproval(fontSize: 12, color: const Color(0xFF4A3E32), fontWeight: FontWeight.w500),
+            style: _jakartaApproval(
+              fontSize: 12,
+              color: const Color(0xFF4A3E32),
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             "Harga: Rp ${formatRupiah(k['price'])} / Bulan",
-            style: _jakartaApproval(fontWeight: FontWeight.w700, color: Colors.green),
+            style: _jakartaApproval(
+              fontWeight: FontWeight.w700,
+              color: Colors.green,
+            ),
           ),
           if (!hideButtons) ...[
             const SizedBox(height: 12),
@@ -475,7 +630,9 @@ class _ApprovalPageState extends State<ApprovalPage> {
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: isIncluded ? const Color(0xFF7A4A1F) : Colors.grey[500],
-              decoration: isIncluded ? TextDecoration.none : TextDecoration.lineThrough,
+              decoration: isIncluded
+                  ? TextDecoration.none
+                  : TextDecoration.lineThrough,
             ),
           ),
         ],
@@ -483,26 +640,73 @@ class _ApprovalPageState extends State<ApprovalPage> {
     );
   }
 
-  Widget _buildActionButtons({required VoidCallback onApprove, required VoidCallback onReject, required bool isApproving, required bool isRejecting, required String approveLabel, required String rejectLabel}) {
+  Widget _buildActionButtons({
+    required VoidCallback onApprove,
+    required VoidCallback onReject,
+    required bool isApproving,
+    required bool isRejecting,
+    required String approveLabel,
+    required String rejectLabel,
+  }) {
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C5A1A),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: (isApproving || isRejecting) ? null : onApprove,
             child: isApproving
-                ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text(approveLabel, style: _jakartaApproval(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                ? const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    approveLabel,
+                    style: _jakartaApproval(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Color(0xFFFFEBEE)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.redAccent,
+              side: const BorderSide(color: Color(0xFFFFEBEE)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: (isApproving || isRejecting) ? null : onReject,
             child: isRejecting
-                ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
-                : Text(rejectLabel, style: _jakartaApproval(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.redAccent)),
+                ? const SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.redAccent,
+                    ),
+                  )
+                : Text(
+                    rejectLabel,
+                    style: _jakartaApproval(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.redAccent,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -517,7 +721,10 @@ class _ApprovalPageState extends State<ApprovalPage> {
           Icon(Icons.done_all, size: 50, color: Colors.brown.withOpacity(0.3)),
           Text(
             "Tidak ada antrean approval",
-            style: _jakartaApproval(color: Colors.brown, fontWeight: FontWeight.w600),
+            style: _jakartaApproval(
+              color: Colors.brown,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

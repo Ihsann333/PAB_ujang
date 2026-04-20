@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/pages/admin_page/detail_kos.dart';
-import 'package:kostly_pa/pages/login_page.dart'; 
+import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
+<<<<<<< HEAD
 TextStyle _soraAdmin({
   double? fontSize,
   FontWeight? fontWeight,
   Color? color,
 }) {
+=======
+// --- STYLES ---
+TextStyle _soraAdmin({double? fontSize, FontWeight? fontWeight, Color? color}) {
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
   return GoogleFonts.sora(
     fontSize: fontSize,
     fontWeight: fontWeight,
@@ -61,12 +66,33 @@ class _MonitorPageState extends State<MonitorPage> {
     if (!mounted) return;
     setState(() => isLoading = true);
     try {
+<<<<<<< HEAD
       // PERBAIKAN: Gunakan select('*') atau select() tanpa filter kolom agar semua data (termasuk fasilitas/deskripsi) terbawa
       final kosRes = await supabase.from('kosts').select('*').eq('is_approved', true);
       final ownerRes = await supabase.from('profiles').select('*').eq('role', 'owner').eq('is_approved', true);
       
       // Ambil top 3 dengan data lengkap
       final top3 = await supabase.from('kosts').select('*').eq('is_approved', true).order('created_at', ascending: false).limit(3);
+=======
+      final now = DateTime.now();
+
+      // 1. Ambil Stats Dasar
+      final kosRes = await supabase
+          .from('kosts')
+          .select('*')
+          .eq('is_approved', true);
+      final ownerRes = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'owner')
+          .eq('is_approved', true);
+      final top3 = await supabase
+          .from('kosts')
+          .select('*')
+          .eq('is_approved', true)
+          .order('created_at', ascending: false)
+          .limit(3);
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
 
       if (mounted) {
         setState(() {
@@ -83,7 +109,8 @@ class _MonitorPageState extends State<MonitorPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5F2),
@@ -199,18 +226,93 @@ class _MonitorPageState extends State<MonitorPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildStatCard("Total Kost", totalKos.toString(), Icons.business_rounded, const Color(0xFF9C5A1A), () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => ListDataPage(title: "Daftar Kost Aktif", table: "kosts", formatRupiah: formatRupiah)));
-                    }),
+                    child: _buildStatCard(
+                      "Total Kost",
+                      totalKos.toString(),
+                      Icons.business_rounded,
+                      const Color(0xFF9C5A1A),
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ListDataPage(
+                              title: "Daftar Kost Aktif",
+                              table: "kosts",
+                              formatRupiah: formatRupiah,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: _buildStatCard("Total Owner", totalOwner.toString(), Icons.people_alt_rounded, const Color(0xFF6B3A10), () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => ListDataPage(title: "Daftar Owner Aktif", table: "profiles", formatRupiah: formatRupiah)));
-                    }),
+                    child: _buildStatCard(
+                      "Total Owner",
+                      totalOwner.toString(),
+                      Icons.people_alt_rounded,
+                      const Color(0xFF6B3A10),
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ListDataPage(
+                              title: "Daftar Owner Aktif",
+                              table: "profiles",
+                              formatRupiah: formatRupiah,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
+<<<<<<< HEAD
+=======
+              const SizedBox(height: 15),
+
+              // Statistik Pembayaran Bulan Ini
+              _sectionTitle("Monitoring Pembayaran"),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      "Belum Bayar",
+                      belumBayar.toString(),
+                      Icons.money_off_rounded,
+                      const Color(0xFFE24D56),
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PaymentStatusPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _buildStatCard(
+                      "Sudah Bayar",
+                      sudahBayar.toString(),
+                      Icons.check_circle_rounded,
+                      const Color(0xFF2E7D32),
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PaymentStatusPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
 
               const SizedBox(height: 35),
               Text("Unit Terbaru", style: _soraAdmin(fontSize: 18, fontWeight: FontWeight.w700)),
@@ -223,23 +325,218 @@ class _MonitorPageState extends State<MonitorPage> {
     );
   }
 
+<<<<<<< HEAD
   Widget _buildStatCard(String t, String v, IconData i, Color c, VoidCallback tap) {
+=======
+  Widget _sectionTitle(String title) {
+    return Text(
+      title,
+      style: _soraAdmin(fontSize: 18, fontWeight: FontWeight.w700),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 25,
+            backgroundColor: Color(0xFF9C5A1A),
+            child: Text(
+              "A",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Administrator",
+                  style: _jakartaAdmin(color: Colors.grey, fontSize: 13),
+                ),
+                Text(
+                  adminEmail ?? "admin@gmail.com",
+                  style: _jakartaAdmin(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.power_settings_new, color: Colors.redAccent),
+            onPressed: () => _showLogoutDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 🔥 ICON (biar lebih hidup)
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout,
+                  color: Colors.redAccent,
+                  size: 26,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // TITLE
+              Text(
+                "Konfirmasi Logout",
+                style: _soraAdmin(fontWeight: FontWeight.w700, fontSize: 18),
+              ),
+
+              const SizedBox(height: 8),
+
+              // CONTENT
+              Text(
+                "Apakah Anda yakin ingin keluar?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[700], fontSize: 14),
+              ),
+
+              const SizedBox(height: 24),
+
+              // BUTTONS
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF9C5A1A),
+                        side: const BorderSide(color: Color(0xFF9C5A1A)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text("Batal"),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context); // tutup dialog dulu
+
+                        await supabase.auth.signOut();
+
+                        if (mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LoginPage(),
+                            ),
+                            (route) => false,
+                          );
+                        }
+                      },
+                      child: const Text("Ya, Keluar"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    String t,
+    String v,
+    IconData i,
+    Color c,
+    VoidCallback tap,
+  ) {
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
     return GestureDetector(
       onTap: tap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: c, 
+          color: c,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: c.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]
+          boxShadow: [
+            BoxShadow(
+              color: c.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(i, color: Colors.white, size: 28),
             const SizedBox(height: 15),
-            Text(v, style: _soraAdmin(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700)),
-            Text(t, style: _jakartaAdmin(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(
+              v,
+              style: _soraAdmin(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              t,
+              style: _jakartaAdmin(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
@@ -251,10 +548,19 @@ class _MonitorPageState extends State<MonitorPage> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosPage(kos: kos))),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DetailKosPage(kos: kos)),
+        ),
         leading: const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
-        title: Text(kos['name'] ?? "Nama Kost", style: _jakartaAdmin(fontWeight: FontWeight.w700)),
-        subtitle: Text("Rp ${formatRupiah(kos['price'])}", style: _jakartaAdmin()),
+        title: Text(
+          kos['name'] ?? "Nama Kost",
+          style: _jakartaAdmin(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          "Rp ${formatRupiah(kos['price'])}",
+          style: _jakartaAdmin(),
+        ),
         trailing: const Icon(Icons.chevron_right),
       ),
     );
@@ -320,7 +626,12 @@ class ListDataPage extends StatelessWidget {
   final String table;
   final String Function(dynamic) formatRupiah;
 
-  const ListDataPage({super.key, required this.title, required this.table, required this.formatRupiah});
+  const ListDataPage({
+    super.key,
+    required this.title,
+    required this.table,
+    required this.formatRupiah,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -334,12 +645,23 @@ class ListDataPage extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: FutureBuilder(
+<<<<<<< HEAD
         // PERBAIKAN: Gunakan select('*') agar data deskripsi, fasilitas, dll ikut terambil
         future: table == 'kosts' 
             ? supabase.from('kosts').select('*').eq('is_approved', true) 
             : supabase.from('profiles').select('*').eq('role', 'owner').eq('is_approved', true),
+=======
+        future: table == 'kosts'
+            ? supabase.from('kosts').select('*').eq('is_approved', true)
+            : supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('role', 'owner')
+                  .eq('is_approved', true),
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting)
+            return const Center(child: CircularProgressIndicator());
           final data = snapshot.data as List? ?? [];
           return ListView.builder(
             padding: const EdgeInsets.all(20),
@@ -347,6 +669,7 @@ class ListDataPage extends StatelessWidget {
             itemBuilder: (context, i) {
               final item = data[i];
               return Card(
+<<<<<<< HEAD
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: ListTile(
@@ -361,8 +684,47 @@ class ListDataPage extends StatelessWidget {
                     if (table == 'kosts') {
                       // Sekarang 'item' sudah membawa data lengkap
                       Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosPage(kos: item)));
+=======
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFF2E8DA),
+                    child: Icon(
+                      table == 'kosts' ? Icons.home_work : Icons.person,
+                      color: const Color(0xFF9C5A1A),
+                    ),
+                  ),
+                  title: Text(
+                    item['name'] ?? item['email'] ?? 'User',
+                    style: _jakartaAdmin(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    table == 'kosts'
+                        ? "Rp ${formatRupiah(item['price'])}"
+                        : (item['email'] ?? ""),
+                    style: _jakartaAdmin(),
+                  ),
+                  onTap: () {
+                    if (table == 'kosts') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetailKosPage(kos: item),
+                        ),
+                      );
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
                     } else {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerDetailPage(owner: item, formatRupiah: formatRupiah)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OwnerDetailPage(
+                            owner: item,
+                            formatRupiah: formatRupiah,
+                          ),
+                        ),
+                      );
                     }
                   },
                 ),
@@ -380,7 +742,11 @@ class OwnerDetailPage extends StatelessWidget {
   final Map owner;
   final String Function(dynamic) formatRupiah;
 
-  const OwnerDetailPage({super.key, required this.owner, required this.formatRupiah});
+  const OwnerDetailPage({
+    super.key,
+    required this.owner,
+    required this.formatRupiah,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +755,14 @@ class OwnerDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5F2),
       appBar: AppBar(
+<<<<<<< HEAD
         title: Text("Profil Owner", style: _soraAdmin(fontWeight: FontWeight.w700)),
+=======
+        title: Text(
+          "Profil Owner",
+          style: _soraAdmin(fontWeight: FontWeight.w700),
+        ),
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
         backgroundColor: const Color(0xFF9C5A1A),
         foregroundColor: Colors.white,
       ),
@@ -402,8 +775,13 @@ class OwnerDetailPage extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const CircleAvatar(radius: 50, backgroundColor: Color(0xFF9C5A1A), child: Icon(Icons.person, size: 60, color: Colors.white)),
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Color(0xFF9C5A1A),
+                  child: Icon(Icons.person, size: 60, color: Colors.white),
+                ),
                 const SizedBox(height: 20),
+<<<<<<< HEAD
                 Text(owner['name'] ?? "Owner", style: _soraAdmin(fontSize: 24, fontWeight: FontWeight.w700)),
                 Text(owner['email'] ?? "-", style: _jakartaAdmin(color: Colors.grey)),
                 const Divider(height: 50),
@@ -424,6 +802,40 @@ class OwnerDetailPage extends StatelessWidget {
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailKosPage(kos: k))),
                   ),
                 )).toList()
+=======
+                Text(
+                  owner['name'] ?? "Owner",
+                  style: _soraAdmin(fontSize: 24, fontWeight: FontWeight.w700),
+                ),
+                const Divider(height: 50),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Kost yang dimiliki:",
+                    style: _soraAdmin(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                ...kos
+                    .map(
+                      (k) => Card(
+                        child: ListTile(
+                          title: Text(k['name']),
+                          subtitle: Text("Rp ${formatRupiah(k['price'])}"),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DetailKosPage(kos: k),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
               ],
             ),
           );
@@ -432,3 +844,86 @@ class OwnerDetailPage extends StatelessWidget {
     );
   }
 }
+<<<<<<< HEAD
+=======
+
+// --- HALAMAN STATUS PEMBAYARAN (TAB VIEW) ---
+class PaymentStatusPage extends StatelessWidget {
+  const PaymentStatusPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final supabase = SupabaseService.client;
+    final now = DateTime.now();
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F5F2),
+        appBar: AppBar(
+          title: Text(
+            "Status Bayar ${now.month}/${now.year}",
+            style: _soraAdmin(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
+          backgroundColor: const Color(0xFF9C5A1A),
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: "Tunggakan"),
+              Tab(text: "Lunas"),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildPaymentList(supabase, 'pending', now),
+            _buildPaymentList(supabase, 'success', now),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentList(supabase, String status, DateTime now) {
+    return FutureBuilder(
+      future: supabase
+          .from('payments')
+          .select('*, kosts(name), profiles(name)')
+          .eq('status', status)
+          .eq('month', now.month)
+          .eq('year', now.year),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        final data = snapshot.data as List? ?? [];
+        if (data.isEmpty) return const Center(child: Text("Tidak ada data"));
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: data.length,
+          itemBuilder: (context, i) {
+            final item = data[i];
+            return Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ListTile(
+                title: Text(
+                  item['profiles']['name'] ?? 'Tenant',
+                  style: _jakartaAdmin(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text("Unit: ${item['kosts']['name']}"),
+                trailing: Icon(
+                  status == 'success' ? Icons.check_circle : Icons.error,
+                  color: status == 'success' ? Colors.green : Colors.red,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+>>>>>>> 68bdf6d7946220431b5be431e88d850f148ff12a
