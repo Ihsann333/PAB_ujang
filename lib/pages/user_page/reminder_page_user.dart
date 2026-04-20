@@ -11,12 +11,6 @@ class ReminderPageUser extends StatefulWidget {
 }
 
 class _ReminderPageUserState extends State<ReminderPageUser> {
-  static const String _kostPrefix = '[KOSTLY_KOST]';
-  static const String _tenantPrefix = '[KOSTLY_TENANT]';
-  static const String _titlePrefix = '[KOSTLY_TITLE]';
-  static const String _bodyPrefix = '[KOSTLY_BODY]';
-
-  final supabase = SupabaseService.client;
   List reminders = [];
   bool isLoading = true;
 
@@ -26,136 +20,62 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
     fetchReminders();
   }
 
+  // ✅ Ambil dari service (sinkron dengan Home)
   Future<void> fetchReminders() async {
     try {
+      final supabase = SupabaseService.client;
       final user = supabase.auth.currentUser;
+
       if (user == null) {
-        if (mounted) setState(() => isLoading = false);
+        setState(() => isLoading = false);
         return;
       }
 
+      // 🔥 ambil kost_id user
       final profile = await supabase
           .from('profiles')
           .select('kost_id')
           .eq('id', user.id)
           .single();
-      final kostId = profile['kost_id'];
 
-      if (kostId == null) {
-        if (mounted) {
-          setState(() {
-            reminders = [];
-            isLoading = false;
-          });
+      final kostId = profile['kost_id']?.toString();
+
+      final data = await SupabaseService.getUserReminders();
+
+      // 🔥 FILTER (INI KUNCI NYA)
+      final filtered = data.where((r) {
+        final reminderKost = r['kost_id']?.toString();
+
+        // filter berdasarkan kost
+        if (kostId != null && reminderKost != null) {
+          if (kostId != reminderKost) return false;
         }
-        return;
-      }
 
-      final userKostId = kostId.toString();
-      final kost = await supabase
-          .from('kosts')
-          .select('owner_id')
-          .eq('id', userKostId)
-          .single();
-      final ownerId = kost['owner_id'].toString();
+        // cek kalau ada tenant khusus
+        final parsed = SupabaseService.parseReminder(
+          r['message'] ?? r['pesan'] ?? '',
+        );
 
-      List data;
-      try {
-        data = await supabase
-            .from('reminders')
-            .select()
-            .eq('owner_id', ownerId)
-            .order('created_at', ascending: false);
-      } catch (_) {
-        data = await supabase
-            .from('reminders')
-            .select()
-            .eq('user_id', ownerId)
-            .order('created_at', ascending: false);
-      }
+        if (parsed != null && parsed['tenant_id'] != null) {
+          return parsed['tenant_id'] == user.id;
+        }
 
-      data = data
-          .where((r) => _isReminderForThisUserAndKost(r, userKostId, user.id))
-          .toList();
+        return true;
+      }).toList();
 
       if (mounted) {
         setState(() {
-          reminders = data;
+          reminders = List<Map<String, dynamic>>.from(filtered);
           isLoading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      print("ERROR: $e");
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  bool _isReminderForThisUserAndKost(
-    Map reminder,
-    String currentKostId,
-    String currentUserId,
-  ) {
-    final directKost = reminder['kost_id']?.toString();
-    if (directKost != null && directKost.isNotEmpty) {
-      if (directKost != currentKostId) return false;
-    }
-
-    for (final field in ['message', 'pesan']) {
-      final raw = reminder[field];
-      if (raw is String) {
-        final parsed = _parsePackedMessage(raw);
-        final packedKostId = parsed?['kost_id'];
-        if (packedKostId != null && packedKostId.isNotEmpty) {
-          if (packedKostId != currentKostId) return false;
-        }
-
-        final packedTenantId = parsed?['tenant_id'];
-        if (packedTenantId != null && packedTenantId.isNotEmpty) {
-          return packedTenantId == currentUserId;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  Map<String, String>? _parsePackedMessage(String raw) {
-    if (!raw.contains(_titlePrefix) || !raw.contains(_bodyPrefix)) {
-      return null;
-    }
-
-    String? kostId;
-    String? tenantId;
-    final titleIndex = raw.indexOf(_titlePrefix);
-    final bodyIndex = raw.indexOf(_bodyPrefix);
-    if (titleIndex < 0 || bodyIndex < 0 || bodyIndex <= titleIndex) {
-      return null;
-    }
-
-    if (raw.startsWith(_kostPrefix)) {
-      final tenantIndex = raw.indexOf(_tenantPrefix, _kostPrefix.length);
-      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
-        kostId = raw.substring(_kostPrefix.length, tenantIndex);
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
-      } else if (titleIndex > _kostPrefix.length) {
-        kostId = raw.substring(_kostPrefix.length, titleIndex);
-      }
-    }
-
-    if (tenantId == null) {
-      final tenantIndex = raw.indexOf(_tenantPrefix);
-      if (tenantIndex >= 0 && tenantIndex < titleIndex) {
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
-      }
-    }
-
-    final title = raw.substring(titleIndex + _titlePrefix.length, bodyIndex);
-    final body = raw.substring(bodyIndex + _bodyPrefix.length);
-    final result = {'title': title, 'body': body};
-    if (kostId != null && kostId.isNotEmpty) result['kost_id'] = kostId;
-    if (tenantId != null && tenantId.isNotEmpty) result['tenant_id'] = tenantId;
-    return result;
-  }
-
+  // 🔽 Ambil title (pakai parser service kalau perlu)
   String _reminderTitle(Map r) {
     final dynamic title = r['title'];
     if (title is String && title.trim().isNotEmpty) return title;
@@ -163,7 +83,7 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
     for (final field in ['message', 'pesan']) {
       final raw = r[field];
       if (raw is String && raw.trim().isNotEmpty) {
-        final parsed = _parsePackedMessage(raw);
+        final parsed = SupabaseService.parseReminder(raw);
         return parsed != null ? parsed['title']! : raw;
       }
     }
@@ -171,17 +91,19 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
     return 'Pengumuman';
   }
 
+  // 🔽 Ambil isi pesan
   String _reminderText(Map r) {
     for (final field in ['message', 'pesan', 'description']) {
       final raw = r[field];
       if (raw is String && raw.trim().isNotEmpty) {
-        final parsed = _parsePackedMessage(raw);
+        final parsed = SupabaseService.parseReminder(raw);
         return parsed != null ? parsed['body']! : raw;
       }
     }
     return '';
   }
 
+  // 🔽 Format waktu (TIDAK DIUBAH)
   String _formatReminderTime(Map r) {
     final dynamic raw = r['reminder_at'] ?? r['created_at'] ?? r['waktu'];
     if (raw == null) return '--:--';
@@ -216,66 +138,67 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : reminders.isEmpty
-              ? Center(
-                  child: Text(
-                    "Belum ada pengumuman",
-                    style: GoogleFonts.plusJakartaSans(color: Colors.grey[700]),
+          ? Center(
+              child: Text(
+                "Belum ada pengumuman",
+                style: GoogleFonts.plusJakartaSans(color: Colors.grey[700]),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: reminders.length,
+              itemBuilder: (context, index) {
+                final r = reminders[index];
+
+                return Card(
+                  color: const Color(0xFFFFFBF7),
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFFE8DCCB)),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: reminders.length,
-                  itemBuilder: (context, index) {
-                    final r = reminders[index];
-                    return Card(
-                      color: const Color(0xFFFFFBF7),
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Color(0xFFE8DCCB)),
-                      ),
-                      child: ListTile(
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _reminderTitle(r),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF2D241A),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                  child: ListTile(
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _reminderTitle(r),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF2D241A),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatReminderTime(r),
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF7A6A58),
-                              ),
-                            ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _reminderText(r),
-                              style: GoogleFonts.plusJakartaSans(
-                                color: const Color(0xFF5F5549),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatReminderTime(r),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF7A6A58),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _reminderText(r),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF5F5549),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

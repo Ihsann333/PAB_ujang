@@ -19,7 +19,11 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   static const String _bodyPrefix = '[KOSTLY_BODY]';
 
   final supabase = SupabaseService.client;
-  final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final currency = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   bool isLoading = true;
   int totalKos = 0;
@@ -62,17 +66,22 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       final List<Map<String, dynamic>> tempKosList = [];
 
       for (var k in fetchedKosts) {
-        final profilesRes = await supabase.from('profiles').select().eq('kost_id', k['id']);
+        final profilesRes = await supabase
+            .from('profiles')
+            .select()
+            .eq('kost_id', k['id']);
         final int activeTenants = (profilesRes as List).length;
         final bool isApproved = k['is_approved'] == true;
-        
+
         final int harga = (k['price'] as num?)?.toInt() ?? 0;
         final int monthlyProfit = isApproved ? (harga * activeTenants) : 0;
 
-        final Map<String, dynamic> currentKos = Map<String, dynamic>.from(k as Map);
+        final Map<String, dynamic> currentKos = Map<String, dynamic>.from(
+          k as Map,
+        );
         currentKos['active_tenants'] = activeTenants;
-        
-        tempKosList.add(currentKos); 
+
+        tempKosList.add(currentKos);
 
         if (isApproved) {
           penghuniCount += activeTenants;
@@ -83,7 +92,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       if (mounted) {
         setState(() {
           kosList = tempKosList;
-          totalKos = fetchedKosts.length; 
+          totalKos = fetchedKosts.length;
           totalPenghuni = penghuniCount;
           totalProfit = profit;
         });
@@ -102,13 +111,14 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
       final List<Map<String, dynamic>> myKosts =
           (await supabase
-          .from('kosts')
-          .select('id,name,price')
-          .eq('owner_id', userId) as List)
+                      .from('kosts')
+                      .select('id,name,price')
+                      .eq('owner_id', userId)
+                  as List)
               .map((item) => Map<String, dynamic>.from(item as Map))
               .toList();
       final List kostIds = myKosts.map((item) => item['id']).toList();
-      
+
       if (kostIds.isEmpty) {
         debugPrint("Owner tidak punya unit kost.");
         if (mounted) {
@@ -123,33 +133,35 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
       final List<Map<String, dynamic>> profiles =
           (await supabase
-          .from('profiles')
-          .select('''
+                      .from('profiles')
+                      .select('''
             *,
             kosts:kost_id (
               name,
               price
             )
           ''')
-          .inFilter('kost_id', kostIds) as List)
+                      .inFilter('kost_id', kostIds)
+                  as List)
               .map((item) => Map<String, dynamic>.from(item as Map))
               .toList();
 
       final List<Map<String, dynamic>> payments =
           (await supabase
-          .from('payments')
-          .select('*')
-          .eq('month', now.month)
-          .eq('year', now.year)
-          .inFilter('kost_id', kostIds)
-          .order('created_at', ascending: false) as List)
+                      .from('payments')
+                      .select('*')
+                      .eq('month', now.month)
+                      .eq('year', now.year)
+                      .inFilter('kost_id', kostIds)
+                      .order('created_at', ascending: false)
+                  as List)
               .map((item) => Map<String, dynamic>.from(item as Map))
               .toList();
 
       final Map<String, Map<String, dynamic>> paymentByTenant = {};
       for (final payment in payments) {
-        final tenantId =
-            (payment['tenant_id'] ?? payment['profile_id'])?.toString();
+        final tenantId = (payment['tenant_id'] ?? payment['profile_id'])
+            ?.toString();
         if (tenantId == null ||
             tenantId.isEmpty ||
             paymentByTenant.containsKey(tenantId)) {
@@ -181,7 +193,8 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           'kost_name': kost is Map && kost['name'] != null
               ? kost['name'].toString()
               : 'Unit Kost',
-          'amount': payment?['amount'] ??
+          'amount':
+              payment?['amount'] ??
               (kost is Map ? (kost['price'] as num?)?.toInt() : 0) ??
               0,
           'month': now.month,
@@ -193,8 +206,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       }
 
       lateNotifications.sort((a, b) {
-        final lateCompare =
-            ((b['late_days'] as num?)?.toInt() ?? 0).compareTo(
+        final lateCompare = ((b['late_days'] as num?)?.toInt() ?? 0).compareTo(
           (a['late_days'] as num?)?.toInt() ?? 0,
         );
         if (lateCompare != 0) return lateCompare;
@@ -219,10 +231,13 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
   Future<void> _approvePayment(dynamic paymentId) async {
     try {
-      await supabase.from('payments').update({
-        'status': 'success',
-        'paid_at': DateTime.now().toIso8601String(),
-      }).eq('id', paymentId);
+      await supabase
+          .from('payments')
+          .update({
+            'status': 'success',
+            'paid_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', paymentId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -233,9 +248,9 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       await refreshAllData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal ACC pembayaran: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal ACC pembayaran: $e')));
       }
     }
   }
@@ -374,9 +389,9 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal kirim reminder: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal kirim reminder: $e')));
       }
     }
   }
@@ -432,8 +447,8 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                     ),
                     Text(
                       pendingCount > 0
-                          ? "$pendingCount tenant melewati jatuh tempo"
-                          : "Belum ada tenant yang telat bayar",
+                          ? "$pendingCount penghuni melewati jatuh tempo"
+                          : "Belum ada penghuni yang telat bayar",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF6B6257),
@@ -445,7 +460,10 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
               ),
               if (pendingCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF0D6),
                     borderRadius: BorderRadius.circular(999),
@@ -470,7 +488,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                "Kalau ada tenant yang belum membayar setelah tanggal jatuh tempo, notifikasinya akan muncul di sini.",
+                "Kalau ada penghuni yang belum membayar setelah tanggal jatuh tempo, notifikasinya akan muncul di sini.",
                 style: GoogleFonts.plusJakartaSans(
                   color: const Color(0xFF6B6257),
                   height: 1.45,
@@ -495,7 +513,8 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                payment['tenant_name']?.toString() ?? 'Penghuni',
+                                payment['tenant_name']?.toString() ??
+                                    'Penghuni',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.w800,
                                   color: const Color(0xFF2D241A),
@@ -591,7 +610,12 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A))));
+    if (isLoading)
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+        ),
+      );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2E8DA),
@@ -601,10 +625,23 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text("Management", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey)),
-              Text("Kostly Owner", style: GoogleFonts.sora(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF2D241A))),
+              Text(
+                "Management",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              Text(
+                "Kostly Owner",
+                style: GoogleFonts.sora(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2D241A),
+                ),
+              ),
               const SizedBox(height: 20),
-              
+
               _buildStatCards(),
               const SizedBox(height: 12),
               _profitCard(currency.format(totalProfit)),
@@ -613,7 +650,13 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
               _buildCombinedTenantList(),
 
               const SizedBox(height: 32),
-              Text("Daftar Unit Kost", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(
+                "Daftar Unit Kost",
+                style: GoogleFonts.sora(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 16),
               ...kosList.map((kos) => _kosCard(kos)),
             ],
@@ -628,7 +671,11 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
       children: [
         _statItem(Icons.domain_rounded, totalKos.toString(), "Total Kost"),
         const SizedBox(width: 12),
-        _statItem(Icons.people_alt_rounded, totalPenghuni.toString(), "Penghuni"),
+        _statItem(
+          Icons.people_alt_rounded,
+          totalPenghuni.toString(),
+          "Penghuni",
+        ),
       ],
     );
   }
@@ -649,15 +696,34 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           decoration: BoxDecoration(
             color: const Color(0xFF9C5A1A),
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: const Color(0xFF9C5A1A).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF9C5A1A).withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(icon, color: Colors.white60, size: 24),
               const SizedBox(height: 10),
-              Text(val, style: GoogleFonts.sora(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-              Text(label, style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 12)),
+              Text(
+                val,
+                style: GoogleFonts.sora(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ),
@@ -669,16 +735,36 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFF2D241A), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D241A),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.account_balance_wallet_rounded, color: Colors.amber, size: 30),
+          const Icon(
+            Icons.account_balance_wallet_rounded,
+            color: Colors.amber,
+            size: 30,
+          ),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Estimasi Pendapatan", style: GoogleFonts.plusJakartaSans(color: Colors.white60, fontSize: 12)),
-              Text(profit, style: GoogleFonts.sora(fontSize: 20, color: Colors.white, fontWeight: FontWeight.w800)),
+              Text(
+                "Estimasi Pendapatan",
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                profit,
+                style: GoogleFonts.sora(
+                  fontSize: 20,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ],
@@ -697,23 +783,28 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Detail Status Penghuni", 
-              style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.bold)
+              "Detail Status Penghuni",
+              style: GoogleFonts.sora(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             IconButton(
-              onPressed: () => setState(() => showTenantList = false), 
-              icon: const Icon(Icons.close_rounded)
-            )
+              onPressed: () => setState(() => showTenantList = false),
+              icon: const Icon(Icons.close_rounded),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         ...allTenants.map((tenant) {
           // Logika pencarian status pembayaran
           final Map<String, dynamic> pay = paymentRequests.firstWhere(
-            (p) => p['profile_id'] == tenant['id'] || p['tenant_id'] == tenant['id'],
+            (p) =>
+                p['profile_id'] == tenant['id'] ||
+                p['tenant_id'] == tenant['id'],
             orElse: () => <String, dynamic>{},
           );
-          
+
           String status = (pay['status'] ?? 'belum').toString().toLowerCase();
           bool isPending = status == 'pending';
           bool isSuccess = status == 'success' || status == 'approved';
@@ -721,7 +812,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           return GestureDetector(
             onTap: () {
               Navigator.push(
-                context, 
+                context,
                 MaterialPageRoute(
                   builder: (context) => DetailPenghuniPage(
                     penghuni: {
@@ -733,17 +824,17 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                       'phone': tenant['phone_number'] ?? "Belum ada No. HP",
                       'room_number': tenant['room_number'] ?? '-',
                       'nik': tenant['nik'] ?? "Belum terupload",
-                    }
-                  )
-                )
+                    },
+                  ),
+                ),
               );
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white, 
-                borderRadius: BorderRadius.circular(16), 
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isPending ? Colors.orange : Colors.grey.shade100,
                   width: isPending ? 1.5 : 1,
@@ -753,7 +844,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                     color: Colors.black.withOpacity(0.02),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -761,31 +852,44 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: const Color(0xFFEADBC9), 
+                        backgroundColor: const Color(0xFFEADBC9),
                         child: Text(
                           (tenant['full_name'] ?? "U")[0].toUpperCase(),
-                          style: const TextStyle(color: Color(0xFF9C5A1A), fontWeight: FontWeight.bold),
-                        )
+                          style: const TextStyle(
+                            color: Color(0xFF9C5A1A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, 
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              tenant['full_name'] ?? "Tanpa Nama", 
-                              style: const TextStyle(fontWeight: FontWeight.bold)
+                              tenant['full_name'] ?? "Tanpa Nama",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             Text(
-                              tenant['kosts']?['name'] ?? 'Unit tidak diketahui', 
-                              style: const TextStyle(fontSize: 11, color: Colors.grey)
+                              tenant['kosts']?['name'] ??
+                                  'Unit tidak diketahui',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ]
-                        )
+                          ],
+                        ),
                       ),
                       _badge(
-                        isSuccess ? "LUNAS" : (isPending ? "PENDING" : "BELUM BAYAR"), 
-                        isSuccess ? Colors.green : (isPending ? Colors.orange : Colors.red)
+                        isSuccess
+                            ? "LUNAS"
+                            : (isPending ? "PENDING" : "BELUM BAYAR"),
+                        isSuccess
+                            ? Colors.green
+                            : (isPending ? Colors.orange : Colors.red),
                       ),
                     ],
                   ),
@@ -793,25 +897,30 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                   if (isPending) ...[
                     const Divider(height: 24),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Nominal: ${currency.format(pay['amount'] ?? 0)}", 
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)
+                          "Nominal: ${currency.format(pay['amount'] ?? 0)}",
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         ElevatedButton(
-                          onPressed: () => _approvePayment(pay['id']), 
+                          onPressed: () => _approvePayment(pay['id']),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green, 
+                            backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                          ), 
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
                           child: const Text("ACC"),
                         ),
-                      ]
-                    )
-                  ]
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -825,22 +934,53 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     bool isApproved = kos['is_approved'] == true;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFEADBC9).withOpacity(0.5))),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEADBC9).withOpacity(0.5)),
+      ),
       child: ListTile(
         onTap: () {
           // PINDAH KE DETAIL KOS (MENGGANTI DIALOG)
-          Navigator.push(context, MaterialPageRoute(builder: (context) => DetailKosPage(kos: kos)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DetailKosPage(kos: kos)),
+          );
         },
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(backgroundColor: isApproved ? const Color(0xFF9C5A1A) : Colors.grey.shade300, child: const Icon(Icons.home_rounded, color: Colors.white)),
-        title: Text(kos['name'] ?? '-', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-        subtitle: Text(currency.format(kos['price'] ?? 0), style: const TextStyle(color: Color(0xFF9C5A1A), fontWeight: FontWeight.bold)),
+        leading: CircleAvatar(
+          backgroundColor: isApproved
+              ? const Color(0xFF9C5A1A)
+              : Colors.grey.shade300,
+          child: const Icon(Icons.home_rounded, color: Colors.white),
+        ),
+        title: Text(
+          kos['name'] ?? '-',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          currency.format(kos['price'] ?? 0),
+          style: const TextStyle(
+            color: Color(0xFF9C5A1A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }
 
-  Widget _badge(String t, Color c) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(6)), child: Text(t, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.bold)));
+  Widget _badge(String t, Color c) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: c.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      t,
+      style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.bold),
+    ),
+  );
 }
 
 // --- BAGIAN DETAIL PAGES (RE-PASTE DARI SEBELUMNYA) ---
@@ -860,7 +1000,11 @@ class DetailKosPage extends StatelessWidget {
     if (value == null) return false;
     if (value is bool) return value;
     String v = value.toString().toLowerCase();
-    return v == "ya" || v == "yes" || v == "true" || v == "1" || v == "tersedia";
+    return v == "ya" ||
+        v == "yes" ||
+        v == "true" ||
+        v == "1" ||
+        v == "tersedia";
   }
 
   @override
@@ -887,7 +1031,11 @@ class DetailKosPage extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: const Color(0xFFEADBC8),
-                child: const Icon(Icons.apartment_rounded, size: 120, color: Color(0xFF9C5A1A)),
+                child: const Icon(
+                  Icons.apartment_rounded,
+                  size: 120,
+                  color: Color(0xFF9C5A1A),
+                ),
               ),
             ),
           ),
@@ -904,33 +1052,71 @@ class DetailKosPage extends StatelessWidget {
                   // Nama & Harga
                   Text(
                     kos['name'] ?? 'Nama Kost',
-                    style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: const Color(0xFF2D1E12)),
+                    style: GoogleFonts.sora(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2D1E12),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     "Rp ${formatRupiah(kos['price'])}",
-                    style: GoogleFonts.sora(fontSize: 22, color: const Color(0xFF9C5A1A), fontWeight: FontWeight.w700),
+                    style: GoogleFonts.sora(
+                      fontSize: 22,
+                      color: const Color(0xFF9C5A1A),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  Text("per bulan", style: GoogleFonts.plusJakartaSans(color: Colors.grey, fontSize: 14)),
-                  
+                  Text(
+                    "per bulan",
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+
                   const SizedBox(height: 30),
-                  
+
                   // Fasilitas
-                  Text("Fasilitas Utama", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    "Fasilitas Utama",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 15),
                   Wrap(
                     spacing: 15,
                     runSpacing: 15,
                     children: [
-                      _buildFasilitasItem(Icons.wifi, "WiFi", cekFasilitas(kos['include_wifi'])),
-                      _buildFasilitasItem(Icons.water_drop, "Air", cekFasilitas(kos['include_water'])),
-                      _buildFasilitasItem(Icons.bolt, "Listrik", cekFasilitas(kos['include_electricity'])),
+                      _buildFasilitasItem(
+                        Icons.wifi,
+                        "WiFi",
+                        cekFasilitas(kos['include_wifi']),
+                      ),
+                      _buildFasilitasItem(
+                        Icons.water_drop,
+                        "Air",
+                        cekFasilitas(kos['include_water']),
+                      ),
+                      _buildFasilitasItem(
+                        Icons.bolt,
+                        "Listrik",
+                        cekFasilitas(kos['include_electricity']),
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 35),
 
-                  Text("Aturan Kos", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    "Aturan Kos",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
@@ -942,28 +1128,45 @@ class DetailKosPage extends StatelessWidget {
                     ),
                     child: Text(
                       kos['rules'] ?? "Hubungi pemilik untuk detail aturan.",
-                      style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.brown.shade900, height: 1.6),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        color: Colors.brown.shade900,
+                        height: 1.6,
+                      ),
                     ),
                   ),
 
                   const SizedBox(height: 35),
 
                   // Alamat
-                  Text("Lokasi", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    "Lokasi",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: Color(0xFF9C5A1A), size: 20),
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF9C5A1A),
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           kos['address'] ?? "Alamat belum diatur",
-                          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade700),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 50),
                 ],
               ),
@@ -982,20 +1185,32 @@ class DetailKosPage extends StatelessWidget {
         color: isAvailable ? Colors.white : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: isAvailable ? const Color(0xFF9C5A1A).withOpacity(0.2) : Colors.grey.shade200
+          color: isAvailable
+              ? const Color(0xFF9C5A1A).withOpacity(0.2)
+              : Colors.grey.shade200,
         ),
       ),
       child: Column(
         children: [
-          Icon(icon, color: isAvailable ? const Color(0xFF9C5A1A) : Colors.grey, size: 24),
+          Icon(
+            icon,
+            color: isAvailable ? const Color(0xFF9C5A1A) : Colors.grey,
+            size: 24,
+          ),
           const SizedBox(height: 6),
-          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           Text(
             isAvailable ? "Include" : "N/A",
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 10, 
-              fontWeight: FontWeight.w700, 
-              color: isAvailable ? Colors.green : Colors.red
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isAvailable ? Colors.green : Colors.red,
             ),
           ),
         ],
@@ -1019,12 +1234,16 @@ class DetailPenghuniPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String rawStatus = (penghuni['payment_status'] ?? 'belum').toString().toLowerCase();
+    String rawStatus = (penghuni['payment_status'] ?? 'belum')
+        .toString()
+        .toLowerCase();
 
     // Format tanggal masuk yang aman (agar tidak error jika null)
     String entryDate = "-";
     if (penghuni['entry_date'] != null) {
-      entryDate = penghuni['entry_date'].toString().split('T')[0]; // Ambil YYYY-MM-DD
+      entryDate = penghuni['entry_date'].toString().split(
+        'T',
+      )[0]; // Ambil YYYY-MM-DD
     }
 
     return Scaffold(
@@ -1050,7 +1269,11 @@ class DetailPenghuniPage extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: const Color(0xFFEADBC8),
-                child: const Icon(Icons.person_rounded, size: 100, color: Color(0xFF9C5A1A)),
+                child: const Icon(
+                  Icons.person_rounded,
+                  size: 100,
+                  color: Color(0xFF9C5A1A),
+                ),
               ),
             ),
           ),
@@ -1072,7 +1295,11 @@ class DetailPenghuniPage extends StatelessWidget {
                       Expanded(
                         child: Text(
                           penghuni['name'] ?? 'Nama Penghuni',
-                          style: GoogleFonts.sora(fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF2D1E12)),
+                          style: GoogleFonts.sora(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF2D1E12),
+                          ),
                         ),
                       ),
                       _buildStatusBadge(rawStatus),
@@ -1081,14 +1308,28 @@ class DetailPenghuniPage extends StatelessWidget {
                   const SizedBox(height: 30),
 
                   // Info Box Utama (Sesuai Konsep Kotak di Detail Kos)
-                  Text("Informasi Sewa", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    "Informasi Sewa",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 15),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _buildInfoBox(Icons.meeting_room, "Kamar", penghuni['room_number'] ?? "-"),
-                      _buildInfoBox(Icons.payments, "Harga", "Rp ${formatRupiah(penghuni['rent_price'])}"),
+                      _buildInfoBox(
+                        Icons.meeting_room,
+                        "Kamar",
+                        penghuni['room_number'] ?? "-",
+                      ),
+                      _buildInfoBox(
+                        Icons.payments,
+                        "Harga",
+                        "Rp ${formatRupiah(penghuni['rent_price'])}",
+                      ),
                       _buildInfoBox(Icons.event_available, "Masuk", entryDate),
                     ],
                   ),
@@ -1096,11 +1337,29 @@ class DetailPenghuniPage extends StatelessWidget {
                   const SizedBox(height: 35),
 
                   // Detail Kontak
-                  Text("Data Diri & Kontak", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Text(
+                    "Data Diri & Kontak",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 15),
-                  _infoRow(Icons.email_outlined, "Email", penghuni['email'] ?? "-"),
-                  _infoRow(Icons.phone_android, "WhatsApp / HP", penghuni['phone'] ?? "-"),
-                  _infoRow(Icons.badge_outlined, "NIK / KTP", penghuni['nik'] ?? "Belum terupload"),
+                  _infoRow(
+                    Icons.email_outlined,
+                    "Email",
+                    penghuni['email'] ?? "-",
+                  ),
+                  _infoRow(
+                    Icons.phone_android,
+                    "WhatsApp / HP",
+                    penghuni['phone'] ?? "-",
+                  ),
+                  _infoRow(
+                    Icons.badge_outlined,
+                    "NIK / KTP",
+                    penghuni['nik'] ?? "Belum terupload",
+                  ),
 
                   const SizedBox(height: 50),
                 ],
@@ -1114,23 +1373,26 @@ class DetailPenghuniPage extends StatelessWidget {
 
   // Widget Badge Status
   Widget _buildStatusBadge(String rawStatus) {
-    final bool isLunas = rawStatus == 'success' || rawStatus == 'approved' || rawStatus == 'lunas';
+    final bool isLunas =
+        rawStatus == 'success' ||
+        rawStatus == 'approved' ||
+        rawStatus == 'lunas';
     final bool isPending = rawStatus == 'pending';
     final bool isRejected = rawStatus == 'rejected';
     final Color badgeColor = isLunas
         ? Colors.green
         : isPending
-            ? Colors.orange
-            : isRejected
-                ? Colors.redAccent
-                : Colors.red;
+        ? Colors.orange
+        : isRejected
+        ? Colors.redAccent
+        : Colors.red;
     final String label = isLunas
         ? "LUNAS"
         : isPending
-            ? "PENDING"
-            : isRejected
-                ? "DITOLAK"
-                : "BELUM BAYAR";
+        ? "PENDING"
+        : isRejected
+        ? "DITOLAK"
+        : "BELUM BAYAR";
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1164,11 +1426,20 @@ class DetailPenghuniPage extends StatelessWidget {
         children: [
           Icon(icon, color: const Color(0xFF9C5A1A), size: 22),
           const SizedBox(height: 6),
-          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey)),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              color: Colors.grey,
+            ),
+          ),
           Text(
             value,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -1193,10 +1464,22 @@ class DetailPenghuniPage extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey)),
-              Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );

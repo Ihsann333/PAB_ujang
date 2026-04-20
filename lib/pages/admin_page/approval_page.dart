@@ -186,9 +186,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
   }
 
   Future<void> handleLogout() async {
+    final pageContext = context;
+
     showDialog(
-      context: context,
-      builder: (BuildContext context) {
+      context: pageContext,
+      builder: (dialogContext) {
         return Dialog(
           backgroundColor: const Color(0xFFFFFBF7),
           shape: RoundedRectangleBorder(
@@ -199,7 +201,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 🔥 ICON
+                // ICON
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -215,7 +217,6 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
                 const SizedBox(height: 16),
 
-                // TITLE
                 Text(
                   "Konfirmasi Keluar",
                   style: _soraApproval(
@@ -227,7 +228,6 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
                 const SizedBox(height: 8),
 
-                // CONTENT
                 Text(
                   "Apakah Anda yakin ingin keluar dari akun ini?",
                   textAlign: TextAlign.center,
@@ -239,13 +239,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
                 const SizedBox(height: 24),
 
-                // BUTTONS
                 Row(
                   children: [
-                    // BATAL
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF9C5A1A),
                           side: const BorderSide(color: Color(0xFF9C5A1A)),
@@ -266,7 +264,6 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
                     const SizedBox(width: 12),
 
-                    // LOGOUT
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -279,17 +276,15 @@ class _ApprovalPageState extends State<ApprovalPage> {
                           elevation: 0,
                         ),
                         onPressed: () async {
-                          Navigator.pop(context);
+                          // 🔥 tutup dialog dulu (pakai dialogContext)
+                          Navigator.pop(dialogContext);
 
-                          await Future.delayed(
-                            const Duration(milliseconds: 150),
-                          );
-
+                          // 🔥 logout
                           await supabase.auth.signOut();
 
+                          // 🔥 pindah halaman pakai pageContext
                           if (mounted) {
-                            Navigator.pushAndRemoveUntil(
-                              context,
+                            Navigator.of(pageContext).pushAndRemoveUntil(
                               MaterialPageRoute(
                                 builder: (_) => const LoginPage(),
                               ),

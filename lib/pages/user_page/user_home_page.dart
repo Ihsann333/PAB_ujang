@@ -44,43 +44,43 @@ class _UserHomePageState extends State<UserHomePage> {
         return;
       }
 
-      final profile =
-          await supabase.from('profiles').select().eq('id', user.id).single();
+      // 🔹 ambil profile
+      final profile = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
 
       if (profile['kost_id'] != null) {
         final kosId = profile['kost_id'].toString();
-        final kosData =
-            await supabase.from('kosts').select().eq('id', kosId).single();
-        final ownerId = kosData['owner_id'].toString();
+
+        // 🔹 ambil data kost
+        final kosData = await supabase
+            .from('kosts')
+            .select()
+            .eq('id', kosId)
+            .single();
+
+        // 🔹 ambil pembayaran
         final paymentData = await _fetchCurrentPayment(user.id, kosId);
 
-        List reminderData;
-        try {
-          reminderData = await supabase
-              .from('reminders')
-              .select()
-              .eq('owner_id', ownerId)
-              .order('created_at', ascending: false)
-              .limit(3);
-        } catch (_) {
-          reminderData = await supabase
-              .from('reminders')
-              .select()
-              .eq('user_id', ownerId)
-              .order('created_at', ascending: false)
-              .limit(3);
-        }
+        // 🔥 AMBIL SEMUA REMINDER DARI SERVICE
+        final allReminders = await SupabaseService.getUserReminders();
 
-        reminderData = reminderData
-            .where((r) => _isReminderForThisUserAndKost(r, kosId, user.id))
-            .toList();
+        final filteredReminders = allReminders.where((r) {
+          return _isReminderForThisUserAndKost(r, kosId, user.id);
+        }).toList();
+
+        final reminderData = List<Map<String, dynamic>>.from(
+          filteredReminders,
+        ).take(3).toList();
 
         if (mounted) {
           setState(() {
             profileData = profile;
             kost = kosData;
             currentPayment = paymentData;
-            reminders = reminderData;
+            reminders = reminderData; // ✅ sudah aman
             isLoading = false;
           });
         }
@@ -89,11 +89,13 @@ class _UserHomePageState extends State<UserHomePage> {
           setState(() {
             profileData = profile;
             currentPayment = null;
+            reminders = []; // 🔥 biar jelas kosong
             isLoading = false;
           });
         }
       }
-    } catch (_) {
+    } catch (e) {
+      print("ERROR HOME: $e");
       if (mounted) setState(() => isLoading = false);
     }
   }
@@ -177,7 +179,10 @@ class _UserHomePageState extends State<UserHomePage> {
       final tenantIndex = raw.indexOf(_tenantPrefix, _kostPrefix.length);
       if (tenantIndex >= 0 && tenantIndex < titleIndex) {
         kostId = raw.substring(_kostPrefix.length, tenantIndex);
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+        tenantId = raw.substring(
+          tenantIndex + _tenantPrefix.length,
+          titleIndex,
+        );
       } else if (titleIndex > _kostPrefix.length) {
         kostId = raw.substring(_kostPrefix.length, titleIndex);
       }
@@ -186,7 +191,10 @@ class _UserHomePageState extends State<UserHomePage> {
     if (tenantId == null) {
       final tenantIndex = raw.indexOf(_tenantPrefix);
       if (tenantIndex >= 0 && tenantIndex < titleIndex) {
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+        tenantId = raw.substring(
+          tenantIndex + _tenantPrefix.length,
+          titleIndex,
+        );
       }
     }
 
@@ -252,7 +260,7 @@ class _UserHomePageState extends State<UserHomePage> {
     return DateFormat('dd/MM/yy').format(local);
   }
 
-Future<Map<String, dynamic>?> _fetchCurrentPayment(
+  Future<Map<String, dynamic>?> _fetchCurrentPayment(
     String userId,
     String kostId,
   ) async {
@@ -335,7 +343,7 @@ Future<Map<String, dynamic>?> _fetchCurrentPayment(
     return false;
   }
 
-Future<void> _submitPaymentRequest() async {
+  Future<void> _submitPaymentRequest() async {
     final user = supabase.auth.currentUser;
     if (user == null || kost == null) return;
 
@@ -352,13 +360,16 @@ Future<void> _submitPaymentRequest() async {
         }
 
         // Update data jika sudah ada (misal sebelumnya ditolak, lalu diajukan ulang)
-        await supabase.from('payments').update({
-          'status': 'pending',
-          'month': now.month,
-          'year': now.year,
-          'kost_id': kost!['id'],
-          'amount': kost!['price'], // Kirim ulang amount untuk berjaga-jaga
-        }).eq('id', currentPayment!['id']);
+        await supabase
+            .from('payments')
+            .update({
+              'status': 'pending',
+              'month': now.month,
+              'year': now.year,
+              'kost_id': kost!['id'],
+              'amount': kost!['price'], // Kirim ulang amount untuk berjaga-jaga
+            })
+            .eq('id', currentPayment!['id']);
       } else {
         // Insert data baru
         await supabase.from('payments').insert({
@@ -427,10 +438,7 @@ Future<void> _submitPaymentRequest() async {
           'exit_request': false,
           'join_date': nowIso,
         },
-        {
-          'kost_id': selectedKost['id'],
-          'exit_request': false,
-        },
+        {'kost_id': selectedKost['id'], 'exit_request': false},
       ];
 
       Object? lastError;
@@ -471,7 +479,8 @@ Future<void> _submitPaymentRequest() async {
 
       await supabase
           .from('profiles')
-          .update({'exit_request': true}).eq('id', user.id);
+          .update({'exit_request': true})
+          .eq('id', user.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -482,40 +491,116 @@ Future<void> _submitPaymentRequest() async {
       await fetchData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal mengajukan keluar: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal mengajukan keluar: $e")));
       }
     }
   }
 
   void _showJoinKostDialog() {
     final TextEditingController codeController = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Daftar Kost",
-          style: GoogleFonts.sora(fontWeight: FontWeight.bold),
-        ),
-        content: TextField(
-          controller: codeController,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(hintText: "Masukkan Kode Kost"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24), // 🔥 FIX
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400), // 🔥 FIX
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9C5A1A).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.home_work,
+                    color: Color(0xFF9C5A1A),
+                    size: 26,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Text(
+                  "Daftar Kost",
+                  style: GoogleFonts.sora(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: const Color(0xFF4A2C0A),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: codeController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: "Masukkan Kode Kost",
+                    filled: true,
+                    fillColor: const Color(0xFFFDF8F2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF9C5A1A),
+                          side: const BorderSide(color: Color(0xFF9C5A1A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text("Batal"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _joinKost(codeController.text);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF9C5A1A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        child: const Text("Daftar"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _joinKost(codeController.text);
-            },
-            child: const Text("Daftar"),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -525,60 +610,80 @@ Future<void> _submitPaymentRequest() async {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            color: Colors.white,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                color: const Color(0xFF9C5A1A),
-                child: Column(
-                  children: [
-                    const CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Color(0xFFF3E3CF),
-                      child: Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF9C5A1A),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 24,
+        ), // 🔥 JARAK SAMPING
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400), // 🔥 BATAS LEBAR
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              color: Colors.white,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // HEADER
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 30),
+                  color: const Color(0xFF9C5A1A),
+                  child: Column(
+                    children: [
+                      const CircleAvatar(
+                        radius: 35,
+                        backgroundColor: Color(0xFFF3E3CF),
+                        child: Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Color(0xFF9C5A1A),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      "Detail Akun",
-                      style: GoogleFonts.sora(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                        color: Colors.white,
+                      const SizedBox(height: 15),
+                      Text(
+                        "Detail Akun",
+                        style: GoogleFonts.sora(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    _buildPopupField("Nama Pengguna", profileData?['full_name'] ?? "-"),
-                    _buildPopupField("Nomor Pengguna", profileData?['phone_number'] ?? "-"),
-                    _buildPopupField("Email", supabase.auth.currentUser?.email ?? "-"),
-                    const SizedBox(height: 20),
-                    _buildActionButton(
-                      "Tutup",
-                      const Color(0xFFF3E3CF),
-                      const Color(0xFF9C5A1A),
-                      () => Navigator.pop(context),
-                    ),
-                  ],
+
+                // CONTENT
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      _buildPopupField(
+                        "Nama Pengguna",
+                        profileData?['full_name'] ?? "-",
+                      ),
+                      _buildPopupField(
+                        "Nomor Pengguna",
+                        profileData?['phone_number'] ?? "-",
+                      ),
+                      _buildPopupField(
+                        "Email",
+                        supabase.auth.currentUser?.email ?? "-",
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      _buildActionButton(
+                        "Tutup",
+                        const Color(0xFFF3E3CF),
+                        const Color(0xFF9C5A1A),
+                        () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -610,90 +715,138 @@ Future<void> _submitPaymentRequest() async {
 
   void _showLogoutConfirmation() {
     final pageContext = context;
+
     showDialog(
       context: pageContext,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFFFFFCF7),
-        surfaceTintColor: Colors.transparent,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 24,
+        ), // 🔥 biar nggak full lebar
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-        contentPadding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFEFF1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.logout_rounded,
-                size: 18,
-                color: Color(0xFFE24D56),
-              ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 400,
+          ), // 🔥 konsisten semua dialog
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 🔥 ICON
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE24D56).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFE24D56),
+                    size: 26,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // TITLE
+                Text(
+                  "Keluar Akun",
+                  style: GoogleFonts.sora(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: const Color(0xFF2D241A),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // MESSAGE
+                Text(
+                  "Yakin ingin keluar dari akun sekarang?",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: const Color(0xFF6B6257),
+                    height: 1.35,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // BUTTONS
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(
+                          dialogContext,
+                          rootNavigator: true,
+                        ).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF9C5A1A),
+                          side: const BorderSide(color: Color(0xFF9C5A1A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Batal",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(
+                            dialogContext,
+                            rootNavigator: true,
+                          ).pop();
+
+                          await supabase.auth.signOut();
+
+                          if (mounted) {
+                            Navigator.of(
+                              pageContext,
+                              rootNavigator: true,
+                            ).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE24D56),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Logout",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Text(
-              "Keluar Akun",
-              style: GoogleFonts.sora(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: const Color(0xFF2D241A),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          "Yakin ingin keluar dari akun sekarang?",
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            color: const Color(0xFF6B6257),
-            height: 1.35,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF7A6A58),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              "Batal",
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(dialogContext, rootNavigator: true).pop();
-              await supabase.auth.signOut();
-              if (mounted) {
-                Navigator.of(pageContext, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                  (route) => false,
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE24D56),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              "Logout",
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -874,10 +1027,10 @@ Future<void> _submitPaymentRequest() async {
             Icons.bolt_rounded,
             "Listrik:",
             _resolveIncludeFlag(
-              kost,
-              primaryKey: 'include_electricity',
-              fallbackKeys: const ['include_listrik', 'listrik'],
-            )
+                  kost,
+                  primaryKey: 'include_electricity',
+                  fallbackKeys: const ['include_listrik', 'listrik'],
+                )
                 ? "Include"
                 : "Tidak termasuk",
           ),
@@ -885,10 +1038,10 @@ Future<void> _submitPaymentRequest() async {
             Icons.water_drop_rounded,
             "Air:",
             _resolveIncludeFlag(
-              kost,
-              primaryKey: 'include_water',
-              fallbackKeys: const ['include_air', 'air'],
-            )
+                  kost,
+                  primaryKey: 'include_water',
+                  fallbackKeys: const ['include_air', 'air'],
+                )
                 ? "Include"
                 : "Tidak termasuk",
           ),
@@ -896,10 +1049,10 @@ Future<void> _submitPaymentRequest() async {
             Icons.wifi_rounded,
             "WiFi:",
             _resolveIncludeFlag(
-              kost,
-              primaryKey: 'include_wifi',
-              fallbackKeys: const ['wifi'],
-            )
+                  kost,
+                  primaryKey: 'include_wifi',
+                  fallbackKeys: const ['wifi'],
+                )
                 ? "Tersedia"
                 : "Tidak Tersedia",
           ),
@@ -1288,9 +1441,7 @@ Future<void> _submitPaymentRequest() async {
                 _canSubmitPaymentRequest()
                     ? "Ajukan Pembayaran"
                     : _paymentStatusLabel(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _canSubmitPaymentRequest()

@@ -167,8 +167,8 @@ class _ReminderPageState extends State<ReminderPage> {
       final Map<String, Map<String, dynamic>> paymentByTenant = {};
       for (final rawPayment in payments as List) {
         final payment = Map<String, dynamic>.from(rawPayment as Map);
-        final tenantId =
-            (payment['tenant_id'] ?? payment['profile_id'])?.toString();
+        final tenantId = (payment['tenant_id'] ?? payment['profile_id'])
+            ?.toString();
         if (tenantId == null ||
             tenantId.isEmpty ||
             paymentByTenant.containsKey(tenantId)) {
@@ -202,7 +202,8 @@ class _ReminderPageState extends State<ReminderPage> {
           'kost_name': kost is Map && kost['name'] != null
               ? kost['name'].toString()
               : 'Unit Kost',
-          'amount': payment?['amount'] ??
+          'amount':
+              payment?['amount'] ??
               (kost is Map ? (kost['price'] as num?)?.toInt() : 0) ??
               0,
           'month': now.month,
@@ -214,8 +215,7 @@ class _ReminderPageState extends State<ReminderPage> {
       }
 
       enriched.sort((a, b) {
-        final lateCompare =
-            ((b['late_days'] as num?)?.toInt() ?? 0).compareTo(
+        final lateCompare = ((b['late_days'] as num?)?.toInt() ?? 0).compareTo(
           (a['late_days'] as num?)?.toInt() ?? 0,
         );
         if (lateCompare != 0) return lateCompare;
@@ -331,9 +331,8 @@ class _ReminderPageState extends State<ReminderPage> {
 
     return 'Belum ada pembayaran yang masuk setelah melewati jatuh tempo.';
   }
-  
 
-Future<void> sendReminder() async {
+  Future<void> sendReminder() async {
     // 1. Validasi Form Kosong
     if (_titleCtrl.text.trim().isEmpty || _msgCtrl.text.trim().isEmpty) {
       if (mounted) {
@@ -345,13 +344,17 @@ Future<void> sendReminder() async {
                 const SizedBox(width: 10),
                 Text(
                   "Judul dan isi pesan tidak boleh kosong!",
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
             backgroundColor: Colors.orange.shade800,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -383,7 +386,9 @@ Future<void> sendReminder() async {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Kost belum disetujui (ACC). Reminder tidak dapat dikirim."),
+            content: Text(
+              "Kost belum disetujui (ACC). Reminder tidak dapat dikirim.",
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -394,7 +399,7 @@ Future<void> sendReminder() async {
 
     // Jalankan pengiriman jika semua validasi lolos
     setState(() => isSending = true);
-    
+
     try {
       final ownerId = supabase.auth.currentUser?.id;
       if (ownerId == null) throw Exception("User belum login");
@@ -414,7 +419,7 @@ Future<void> sendReminder() async {
 
       _titleCtrl.clear();
       _msgCtrl.clear();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -428,7 +433,10 @@ Future<void> sendReminder() async {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal kirim: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text("Gagal kirim: $e"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -489,9 +497,9 @@ Future<void> sendReminder() async {
       await fetchPaymentNotifications();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal kirim reminder: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal kirim reminder: $e')));
       }
     } finally {
       if (mounted) {
@@ -527,12 +535,14 @@ Future<void> sendReminder() async {
     final dynamic message = r['message'];
     if (message is String && message.trim().isNotEmpty) {
       final parsed = _parsePackedMessage(message);
-      if (parsed != null && parsed['title']!.trim().isNotEmpty) return parsed['title']!;
+      if (parsed != null && parsed['title']!.trim().isNotEmpty)
+        return parsed['title']!;
     }
     final dynamic pesan = r['pesan'];
     if (pesan is String && pesan.trim().isNotEmpty) {
       final parsed = _parsePackedMessage(pesan);
-      if (parsed != null && parsed['title']!.trim().isNotEmpty) return parsed['title']!;
+      if (parsed != null && parsed['title']!.trim().isNotEmpty)
+        return parsed['title']!;
     }
     return 'Reminder';
   }
@@ -619,9 +629,9 @@ Future<void> sendReminder() async {
       fetchReminders();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal hapus reminder: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal hapus reminder: $e")));
       }
     }
   }
@@ -669,7 +679,11 @@ Future<void> sendReminder() async {
                     CircleAvatar(
                       radius: 16,
                       backgroundColor: Color(0xFFE24D56),
-                      child: Icon(Icons.delete_outline, color: Colors.white, size: 18),
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     SizedBox(width: 10),
                     Text(
@@ -702,7 +716,10 @@ Future<void> sendReminder() async {
                     TextButton(
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF7B6A56),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                       ),
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(
@@ -719,13 +736,20 @@ Future<void> sendReminder() async {
                         backgroundColor: const Color(0xFFE24D56),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 11,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(context, true),
                       child: Text(
                         "Hapus",
-                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -767,7 +791,10 @@ Future<void> sendReminder() async {
       final tenantIndex = raw.indexOf(_tenantPrefix, _kostPrefix.length);
       if (tenantIndex >= 0 && tenantIndex < titleIndex) {
         kostId = raw.substring(_kostPrefix.length, tenantIndex);
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+        tenantId = raw.substring(
+          tenantIndex + _tenantPrefix.length,
+          titleIndex,
+        );
       } else if (titleIndex > _kostPrefix.length) {
         kostId = raw.substring(_kostPrefix.length, titleIndex);
       }
@@ -776,7 +803,10 @@ Future<void> sendReminder() async {
     if (tenantId == null) {
       final tenantIndex = raw.indexOf(_tenantPrefix);
       if (tenantIndex >= 0 && tenantIndex < titleIndex) {
-        tenantId = raw.substring(tenantIndex + _tenantPrefix.length, titleIndex);
+        tenantId = raw.substring(
+          tenantIndex + _tenantPrefix.length,
+          titleIndex,
+        );
       }
     }
 
@@ -806,7 +836,10 @@ Future<void> sendReminder() async {
             ),
             if (paymentNotifications.isNotEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFE7C8),
                   borderRadius: BorderRadius.circular(999),
@@ -823,7 +856,9 @@ Future<void> sendReminder() async {
         ),
         const SizedBox(height: 10),
         if (isLoadingPayments)
-          const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
+          const Center(
+            child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+          )
         else if (paymentNotifications.isEmpty)
           Container(
             width: double.infinity,
@@ -1003,273 +1038,313 @@ Future<void> sendReminder() async {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-            Text(
-              "Kirim Reminder",
-              style: GoogleFonts.sora(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF2D241A),
+              Text(
+                "Kirim Reminder",
+                style: GoogleFonts.sora(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2D241A),
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            _buildPaymentNotificationSection(),
-            const SizedBox(height: 28),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFCF7),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFEADBC9)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF5A3A17).withOpacity(0.07),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _titleCtrl,
-                    decoration: InputDecoration(
-                      labelText: "Judul Reminder",
-                      labelStyle: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6F6256),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F0E4),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
+              const SizedBox(height: 18),
+              _buildPaymentNotificationSection(),
+              const SizedBox(height: 28),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFCF7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFEADBC9)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF5A3A17).withOpacity(0.07),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _msgCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: "Isi Pesan",
-                      labelStyle: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6F6256),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F0E4),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F0E4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedKostId,
-                        isExpanded: true,
-                        hint: Text("Pilih Kost Tujuan", style: GoogleFonts.plusJakartaSans()),
-                        items: myKosts.map((k) {
-                          bool isApproved = k['is_approved'] == true;
-                          return DropdownMenuItem<String>(
-                            value: k['id'].toString(),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    k['name']?.toString() ?? 'Kost',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      color: isApproved ? const Color(0xFF2D241A) : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                                if (!isApproved)
-                                  const Icon(Icons.lock_clock, size: 16, color: Colors.orange),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) => setState(() => selectedKostId = value),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 14),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9C5A1A),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    onPressed: isSending ? null : sendReminder,
-                    child: Text(
-                      isSending ? "MENGIRIM..." : "KIRIM REMINDER",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              "Reminder Tersimpan",
-              style: GoogleFonts.sora(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF2D241A),
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (isLoadingReminders)
-              const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
-            else if (reminders.isEmpty)
-              Center(child: Text("Belum ada reminder", style: GoogleFonts.plusJakartaSans()))
-            else
-              ...reminders.map(
-                (r) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFCF7),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFEADBC9)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF5A3A17).withOpacity(0.06),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE7C8),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.notifications_active, color: Color(0xFF9C5A1A)),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _titleCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Judul Reminder",
+                        labelStyle: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6F6256),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(right: 86),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _reminderTitle(r),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F0E4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _msgCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: "Isi Pesan",
+                        labelStyle: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF6F6256),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF8F0E4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F0E4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedKostId,
+                          isExpanded: true,
+                          hint: Text(
+                            "Pilih Kost Tujuan",
+                            style: GoogleFonts.plusJakartaSans(),
+                          ),
+                          items: myKosts.map((k) {
+                            bool isApproved = k['is_approved'] == true;
+                            return DropdownMenuItem<String>(
+                              value: k['id'].toString(),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      k['name']?.toString() ?? 'Kost',
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF2D241A),
+                                        color: isApproved
+                                            ? const Color(0xFF2D241A)
+                                            : Colors.grey,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      _reminderText(r),
-                                      style: GoogleFonts.plusJakartaSans(color: const Color(0xFF5A5043)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: PopupMenuButton<String>(
-                                  tooltip: "Opsi reminder",
-                                  position: PopupMenuPosition.under,
-                                  offset: const Offset(0, 6),
-                                  elevation: 8,
-                                  padding: EdgeInsets.zero,
-                                  color: const Color(0xFFFFFBF7),
-                                  surfaceTintColor: Colors.transparent,
-                                  constraints: const BoxConstraints(minWidth: 170),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  child: SizedBox(
-                                    width: 72,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          _formatReminderTime(r),
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          overflow: TextOverflow.visible,
-                                          textAlign: TextAlign.right,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF7A6A58),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 1),
-                                        const Icon(
-                                          Icons.keyboard_arrow_down,
-                                          size: 16,
-                                          color: Color(0xFF7A6A58),
-                                        ),
-                                      ],
                                     ),
                                   ),
-                                  onSelected: (value) {
-                                    if (value == 'delete') {
-                                      _confirmDeleteReminder(r);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    PopupMenuItem<String>(
-                                      value: 'delete',
-                                      height: 42,
-                                      child: Row(
+                                  if (!isApproved)
+                                    const Icon(
+                                      Icons.lock_clock,
+                                      size: 16,
+                                      color: Colors.orange,
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) =>
+                              setState(() => selectedKostId = value),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF9C5A1A),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: isSending ? null : sendReminder,
+                      child: Text(
+                        isSending ? "MENGIRIM..." : "KIRIM REMINDER",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                "Reminder Tersimpan",
+                style: GoogleFonts.sora(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF2D241A),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (isLoadingReminders)
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+                )
+              else if (reminders.isEmpty)
+                Center(
+                  child: Text(
+                    "Belum ada reminder",
+                    style: GoogleFonts.plusJakartaSans(),
+                  ),
+                )
+              else
+                ...reminders.map(
+                  (r) => Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFCF7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFEADBC9)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5A3A17).withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE7C8),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_active,
+                              color: Color(0xFF9C5A1A),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 86),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _reminderTitle(r),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF2D241A),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        _reminderText(r),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          color: const Color(0xFF5A5043),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: PopupMenuButton<String>(
+                                    tooltip: "Opsi reminder",
+                                    position: PopupMenuPosition.under,
+                                    offset: const Offset(0, 6),
+                                    elevation: 8,
+                                    padding: EdgeInsets.zero,
+                                    color: const Color(0xFFFFFBF7),
+                                    surfaceTintColor: Colors.transparent,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 170,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: SizedBox(
+                                      width: 72,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
                                         children: [
-                                          const Icon(Icons.delete_outline, color: Color(0xFFE24D56), size: 20),
-                                          const SizedBox(width: 10),
                                           Text(
-                                            "Hapus reminder",
+                                            _formatReminderTime(r),
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.visible,
+                                            textAlign: TextAlign.right,
                                             style: GoogleFonts.plusJakartaSans(
-                                              color: const Color(0xFF2D241A),
+                                              fontSize: 12,
                                               fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF7A6A58),
                                             ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          const Icon(
+                                            Icons.keyboard_arrow_down,
+                                            size: 16,
+                                            color: Color(0xFF7A6A58),
                                           ),
                                         ],
                                       ),
                                     ),
-                                  ],
+                                    onSelected: (value) {
+                                      if (value == 'delete') {
+                                        _confirmDeleteReminder(r);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem<String>(
+                                        value: 'delete',
+                                        height: 42,
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.delete_outline,
+                                              color: Color(0xFFE24D56),
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              "Hapus reminder",
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    color: const Color(
+                                                      0xFF2D241A,
+                                                    ),
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
       ),
-    ); 
+    );
   }
 }
