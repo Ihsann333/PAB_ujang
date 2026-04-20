@@ -88,6 +88,31 @@ Untuk mendukung estetika dan fungsionalitas pengolahan data, aplikasi ini juga m
 ![alt text](image.png)
 
 ### Fitur registrasi
-1. **Registrasi Owner:** ![alt text](image-1.png)
+1. **Registrasi Owner:** 
+![alt text](image-1.png)
 
-2. **Registrasi Penghuni:** ![alt text](image-2.png)
+2. **Registrasi Penghuni:** 
+![alt text](image-2.png)
+
+### Fitur Admin
+1. **Halaman Monitor Admin:**
+![alt text](image-3.png)
+
+2. **Halaman Approval Admin:**
+![alt text](image-4.png)
+
+### FItur Owner
+1. **Dashboard Owner:**
+![alt text](image-5.png)
+
+2. **Halaman Reminder Owner:**
+![alt text](image-6.png)
+
+3. **Halaman Profile Owner**
+![alt text](image-7.png)
+
+### Fitur User
+1. **Halaman Home User:**
+![alt text](image-8.png)
+
+2. **Halaman Reminder User:**
