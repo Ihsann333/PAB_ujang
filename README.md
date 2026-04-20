@@ -42,33 +42,44 @@ Aplikasi ini dikembangkan untuk memudahkan pengguna dalam mengelola data secara 
 # 📱 Fitur - Fitur Utama Program
 
 ### 🔹 Fitur untuk User (Penghuni Kost)
-* **Login via Join Code:** Mengakses sistem pengelolaan kost secara instan menggunakan kode unik yang diberikan oleh Owner.
-* **Detail Kost:** Melihat fasilitas, alamat, dan peraturan kost secara lengkap.
-* **Status Pembayaran:** Memantau status tagihan bulan ini (Lunas/Belum Bayar).
-* **Notifikasi Pengingat Otomatis:** Sistem peringatan dini yang memberitahu penghuni saat mendekati tanggal jatuh tempo pembayaran.
-* **Pusat Informasi & Broadcast:** Menerima pengumuman atau instruksi khusus secara langsung dari Owner terkait operasional kost.
+1. **Login via Join Code:** Mengakses sistem pengelolaan kost secara instan menggunakan kode unik yang diberikan oleh Owner.
+2. **Detail Kost:** Melihat fasilitas, alamat, dan peraturan kost secara lengkap.
+3. **Status Pembayaran:** Memantau status tagihan bulan ini (Lunas/Belum Bayar).
+4. **Notifikasi Pengingat Otomatis:** Sistem peringatan dini yang memberitahu penghuni saat mendekati tanggal jatuh tempo pembayaran.
+5. **Pusat Informasi & Broadcast:** Menerima pengumuman atau instruksi khusus secara langsung dari Owner terkait operasional kost.
 
 ### 🔹 Fitur untuk Owner (Pemilik Kost)
-* **Manajemen Properti Kost:** Kendali penuh untuk menambah, memperbarui, atau menghapus data kost serta mengelola kapasitas kamar.
-* **Verifikasi Penghuni:** Melakukan validasi dan persetujuan (approve) terhadap calon penghuni yang mendaftar menggunakan kode akses.
-* **Dashboard Pembayaran:** Memantau daftar penghuni yang sudah membayar atau yang masih menunggak.
-* **Generate Kode Join:** Membuat kode unik untuk diberikan kepada calon penghuni baru.
+1. **Manajemen Properti Kost:** Kendali penuh untuk menambah, memperbarui, atau menghapus data kost serta mengelola kapasitas kamar.
+2. **Verifikasi Penghuni:** Melakukan validasi dan persetujuan (approve) terhadap calon penghuni yang mendaftar menggunakan kode akses.
+3. **Dashboard Pembayaran:** Memantau daftar penghuni yang sudah membayar atau yang masih menunggak.
+4. **Generate Kode Join:** Membuat kode unik untuk diberikan kepada calon penghuni baru.
 
 ### 🔹 Fitur untuk Admin (Pengelola Sistem)
-* **Verifikasi Owner & Kost:** Memastikan pemilik kost yang mendaftar adalah pengguna valid.
-* **Monitoring Global:** Mengelola basis data pengguna dan memastikan keamanan sistem secara keseluruhan.
-* **Monitoring Global:** Mengawasi seluruh basis data pengguna dan lalu lintas sistem untuk menjaga stabilitas serta keamanan aplikasi secara menyeluruh.
+5. **Verifikasi Owner & Kost:** Memastikan pemilik kost yang mendaftar adalah pengguna valid.
+6. **Monitoring Global:** Mengelola basis data pengguna dan memastikan keamanan sistem secara keseluruhan.
+7. **Monitoring Global:** Mengawasi seluruh basis data pengguna dan lalu lintas sistem untuk menjaga stabilitas serta keamanan aplikasi secara menyeluruh.
 
-# 📲 Widget Yang Digunakan
+### 🔹 Widget Yang Digunakan
 Aplikasi ini dibangun menggunakan berbagai widget Flutter untuk fungsionalitas maksimal:
 
-* **TextFormField:** Untuk input data akun, nominal harga, dan alamat kost.
-* **DropdownButton:** Digunakan untuk memilih daftar kost yang dikelola oleh owner.
-* **CheckboxListTile:** Mempermudah pemilihan fasilitas kost (Listrik, Air, WiFi).
-* **ListView & ListTile:** Menampilkan daftar penghuni dan riwayat transaksi secara rapi.
-* **SnackBar:** Memberikan umpan balik instan jika registrasi atau pembayaran berhasil/gagal.
-* **Google Fonts:** Menggunakan font *Plus Jakarta Sans* untuk tampilan yang modern dan profesional.
-* **CircularProgressIndicator:** Memberikan umpan balik visual berupa indikator pemuatan (loading) yang berputar saat aplikasi sedang melakukan sinkronisasi data dengan Supabase atau selama proses pengiriman reminder.
-* **SingleChildScrollView:** Widget yang memungkinkan seluruh tampilan halaman dapat digulir (scrollable), sangat penting untuk mencegah error layout overflow saat pengguna membuka keyboard atau saat konten halaman melebihi ukuran layar perangkat.
-* **LinearProgressIndicator:** Indikator pemuatan berbentuk garis mendatar, memberikan umpan balik visual yang halus saat proses transisi atau pengiriman data berlangsung.
-* **RefreshIndicator:** Mengimplementasikan fitur "Pull-to-Refresh", memudahkan pengguna untuk memperbarui daftar data (seperti riwayat reminder atau status pembayaran) hanya dengan menarik layar ke bawah.
+1. **TextFormField:** Untuk input data akun, nominal harga, dan alamat kost.
+2. **DropdownButton:** Digunakan untuk memilih daftar kost yang dikelola oleh owner.
+3. **CheckboxListTile:** Mempermudah pemilihan fasilitas kost (Listrik, Air, WiFi).
+4. **ListView & ListTile:** Menampilkan daftar penghuni dan riwayat transaksi secara rapi.
+5. **SnackBar:** Memberikan umpan balik instan jika registrasi atau pembayaran berhasil/gagal.
+6. **Google Fonts:** Menggunakan font *Plus Jakarta Sans* untuk tampilan yang modern dan profesional.
+7. **CircularProgressIndicator:** Memberikan umpan balik visual berupa indikator pemuatan (loading) yang berputar saat aplikasi sedang melakukan sinkronisasi data dengan Supabase atau selama proses pengiriman reminder.
+8. **SingleChildScrollView:** Widget yang memungkinkan seluruh tampilan halaman dapat digulir (scrollable), sangat penting untuk mencegah error layout overflow saat pengguna membuka keyboard atau saat konten halaman melebihi ukuran layar perangkat.
+9. **LinearProgressIndicator:** Indikator pemuatan berbentuk garis mendatar, memberikan umpan balik visual yang halus saat proses transisi atau pengiriman data berlangsung.
+10. **RefreshIndicator:** Mengimplementasikan fitur "Pull-to-Refresh", memudahkan pengguna untuk memperbarui daftar data (seperti riwayat reminder atau status pembayaran) hanya dengan menarik layar ke bawah.
+
+### 🔹Package Tambahan
+Untuk mendukung estetika dan fungsionalitas pengolahan data, aplikasi ini juga mengintegrasikan beberapa package pendukung:
+
+1. **Google Fonts (google_fonts):** Digunakan untuk kustomisasi tipografi secara dinamis. Dalam proyek ini, kami menggunakan font Plus Jakarta Sans untuk memberikan kesan tampilan yang modern, bersih, dan profesional tanpa perlu mengunduh file font secara manual ke dalam aset proyek.
+
+2. **Intl (intl):** Package ini berperan penting dalam internasionalisasi dan lokalisasi data. Kami menggunakannya untuk:
+
+- Formatting Mata Uang: Mengubah angka mentah dari database menjadi format Rupiah (IDR) agar informasi biaya kost mudah dipahami.
+
+- Formatting Tanggal: Mengelola tampilan tanggal jatuh tempo dan riwayat pembayaran agar sesuai dengan format waktu lokal yang user-friendly.
