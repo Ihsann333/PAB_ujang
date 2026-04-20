@@ -333,7 +333,6 @@ class _ReminderPageState extends State<ReminderPage> {
   }
 
   Future<void> sendReminder() async {
-    // 1. Validasi Form Kosong
     if (_titleCtrl.text.trim().isEmpty || _msgCtrl.text.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -359,10 +358,9 @@ class _ReminderPageState extends State<ReminderPage> {
           ),
         );
       }
-      return; // Berhenti di sini jika kosong
+      return;
     }
 
-    // 2. Validasi Kost Belum Dipilih
     if (selectedKostId == null || selectedKostId!.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -376,7 +374,6 @@ class _ReminderPageState extends State<ReminderPage> {
       return;
     }
 
-    // --- LOGIKA PENGECEKAN ACC ---
     final selectedKost = myKosts.firstWhere(
       (k) => k['id'].toString() == selectedKostId,
       orElse: () => null,
@@ -397,7 +394,6 @@ class _ReminderPageState extends State<ReminderPage> {
       return;
     }
 
-    // Jalankan pengiriman jika semua validasi lolos
     setState(() => isSending = true);
 
     try {
@@ -409,7 +405,6 @@ class _ReminderPageState extends State<ReminderPage> {
       final packedText = _packTitleAndMessage(title, text, selectedKostId!);
       final nowIso = DateTime.now().toIso8601String();
 
-      // Gunakan payload utama saja untuk efisiensi
       await supabase.from('reminders').insert({
         'owner_id': ownerId,
         'kost_id': selectedKostId,
