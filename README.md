@@ -83,3 +83,11 @@ Untuk mendukung estetika dan fungsionalitas pengolahan data, aplikasi ini juga m
 - Formatting Mata Uang: Mengubah angka mentah dari database menjadi format Rupiah (IDR) agar informasi biaya kost mudah dipahami.
 
 - Formatting Tanggal: Mengelola tampilan tanggal jatuh tempo dan riwayat pembayaran agar sesuai dengan format waktu lokal yang user-friendly.
+
+### Fitur awal
+![alt text](image.png)
+
+### Fitur registrasi
+1. **Registrasi Owner:** ![alt text](image-1.png)
+
+2. **Registrasi Penghuni:** ![alt text](image-2.png)
