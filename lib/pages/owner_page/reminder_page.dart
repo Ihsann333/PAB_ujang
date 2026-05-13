@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 class ReminderPage extends StatefulWidget {
@@ -64,11 +65,23 @@ class _ReminderPageState extends State<ReminderPage> {
           .eq('owner_id', userId)
           .order('created_at', ascending: false);
 
+      final fetchedKosts = (data as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+
       if (mounted) {
         setState(() {
-          myKosts = data as List;
-          if (selectedKostId == null && myKosts.isNotEmpty) {
-            selectedKostId = myKosts.first['id'].toString();
+          myKosts = fetchedKosts;
+
+          final bool selectedStillExists = selectedKostId != null &&
+              myKosts.any((k) => k['id'].toString() == selectedKostId);
+
+          if (!selectedStillExists) {
+            final approvedKost = _firstApprovedKost() ??
+                (myKosts.isNotEmpty
+                    ? Map<String, dynamic>.from(myKosts.first as Map)
+                    : null);
+            selectedKostId = approvedKost?['id']?.toString();
           }
         });
       }
@@ -252,6 +265,43 @@ class _ReminderPageState extends State<ReminderPage> {
         status == 'paid';
   }
 
+  bool _isTruthy(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == 't' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'y';
+    }
+    return false;
+  }
+
+  bool _isApprovedKost(Map<String, dynamic> kost) {
+    return _isTruthy(kost['is_approved']);
+  }
+
+  Map<String, dynamic>? _findKostById(String kostId) {
+    for (final raw in myKosts) {
+      if (raw is Map && raw['id']?.toString() == kostId) {
+        return Map<String, dynamic>.from(raw as Map);
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _firstApprovedKost() {
+    for (final raw in myKosts) {
+      if (raw is Map) {
+        final kost = Map<String, dynamic>.from(raw as Map);
+        if (_isApprovedKost(kost)) return kost;
+      }
+    }
+    return null;
+  }
+
   DateTime? _tenantDueDate(Map<String, dynamic> tenant, DateTime reference) {
     final raw = _resolveTenantJoinDateRaw(tenant);
     if (raw == null) return null;
@@ -374,12 +424,24 @@ class _ReminderPageState extends State<ReminderPage> {
       return;
     }
 
-    final selectedKost = myKosts.firstWhere(
-      (k) => k['id'].toString() == selectedKostId,
-      orElse: () => null,
-    );
+    final selectedKost = _findKostById(selectedKostId!);
 
-    if (selectedKost == null || selectedKost['is_approved'] != true) {
+    if (selectedKost == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Kost tujuan tidak ditemukan. Silakan pilih ulang kost.",
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!_isApprovedKost(selectedKost)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -424,6 +486,10 @@ class _ReminderPageState extends State<ReminderPage> {
           ),
         );
       }
+      await AppNotificationService.show(
+        title: 'Reminder terkirim',
+        body: 'Reminder berhasil dikirim ke penghuni.',
+      );
       fetchReminders();
     } catch (e) {
       if (mounted) {
@@ -487,6 +553,11 @@ class _ReminderPageState extends State<ReminderPage> {
           ),
         );
       }
+      await AppNotificationService.show(
+        title: 'Reminder terlambat terkirim',
+        body:
+            'Reminder keterlambatan untuk ${payment['tenant_name']} berhasil dikirim.',
+      );
 
       await fetchReminders();
       await fetchPaymentNotifications();
@@ -864,7 +935,7 @@ class _ReminderPageState extends State<ReminderPage> {
               border: Border.all(color: const Color(0xFFEADBC9)),
             ),
             child: Text(
-              "Belum ada tenant yang telat bayar lewat jatuh tempo bulan ini.",
+              "Tidak ada tagihan yang terlambat saat ini",
               style: GoogleFonts.plusJakartaSans(
                 color: const Color(0xFF6B6257),
                 height: 1.45,
@@ -1113,7 +1184,10 @@ class _ReminderPageState extends State<ReminderPage> {
                             style: GoogleFonts.plusJakartaSans(),
                           ),
                           items: myKosts.map((k) {
-                            bool isApproved = k['is_approved'] == true;
+                            bool isApproved = k is Map &&
+                                _isApprovedKost(
+                                  Map<String, dynamic>.from(k as Map),
+                                );
                             return DropdownMenuItem<String>(
                               value: k['id'].toString(),
                               child: Row(

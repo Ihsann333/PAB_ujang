@@ -264,6 +264,10 @@ class _MonitorPageState extends State<MonitorPage> {
                       totalKos.toString(),
                       Icons.business_rounded,
                       const Color(0xFF9C5A1A),
+                      onTap: () => _openListDataPage(
+                        title: "Daftar Kost",
+                        table: "kosts",
+                      ),
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -273,6 +277,10 @@ class _MonitorPageState extends State<MonitorPage> {
                       totalOwner.toString(),
                       Icons.people_alt_rounded,
                       const Color(0xFF6B3A10),
+                      onTap: () => _openListDataPage(
+                        title: "Daftar Owner",
+                        table: "profiles",
+                      ),
                     ),
                   ),
                 ],
@@ -295,35 +303,72 @@ class _MonitorPageState extends State<MonitorPage> {
     );
   }
 
-  Widget _buildStatCard(String t, String v, IconData i, Color c) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c,
+  Widget _buildStatCard(
+    String t,
+    String v,
+    IconData i,
+    Color c, {
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: c.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: c.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(i, color: Colors.white, size: 28),
+                  const Spacer(),
+                  if (onTap != null)
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                v,
+                style: _soraAdmin(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(t, style: _jakartaAdmin(color: Colors.white70, fontSize: 14)),
+            ],
+          ),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(i, color: Colors.white, size: 28),
-          const SizedBox(height: 15),
-          Text(
-            v,
-            style: _soraAdmin(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(t, style: _jakartaAdmin(color: Colors.white70, fontSize: 14)),
-        ],
+    );
+  }
+
+  void _openListDataPage({required String title, required String table}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ListDataPage(
+          title: title,
+          table: table,
+          formatRupiah: formatRupiah,
+        ),
       ),
     );
   }

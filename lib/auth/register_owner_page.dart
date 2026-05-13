@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 import '../services/supabase_service.dart';
+import 'package:kostly_pa/services/media_service.dart';
+import 'dart:typed_data';
 import 'dart:math';
 
 class RegisterOwnerPage extends StatefulWidget {
@@ -30,6 +32,10 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   bool air = false;
   bool wifi = false;
   bool isLoading = false;
+  Uint8List? _ownerPhotoBytes;
+  Uint8List? _kostPhotoBytes;
+  String? _ownerPhotoName;
+  String? _kostPhotoName;
 
   final supabase = SupabaseService.client;
 
@@ -53,6 +59,42 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
     );
   }
 
+  Future<void> _pickOwnerPhoto() async {
+    final photo = await MediaService.takePhoto();
+    if (photo == null) return;
+    final bytes = await photo.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _ownerPhotoBytes = bytes;
+      _ownerPhotoName = photo.name;
+    });
+  }
+
+  Future<void> _pickKostPhoto() async {
+    final photo = await MediaService.takePhoto();
+    if (photo == null) return;
+    final bytes = await photo.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _kostPhotoBytes = bytes;
+      _kostPhotoName = photo.name;
+    });
+  }
+
+  Future<String?> _uploadPhoto({
+    required Uint8List? bytes,
+    required String folder,
+    required String fileName,
+  }) async {
+    if (bytes == null) return null;
+    return MediaService.uploadImageBytes(
+      bytes: bytes,
+      bucket: 'kostly-media',
+      folder: folder,
+      fileName: fileName,
+    );
+  }
+
   Future<void> registerOwner() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -67,6 +109,19 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       final user = res.user;
       if (user == null) throw "Gagal mendaftarkan akun.";
 
+      final ownerPhotoUrl = await _uploadPhoto(
+        bytes: _ownerPhotoBytes,
+        folder: 'profiles/${user.id}',
+        fileName: _ownerPhotoName ??
+            'owner_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      final kostPhotoUrl = await _uploadPhoto(
+        bytes: _kostPhotoBytes,
+        folder: 'kosts/${user.id}',
+        fileName: _kostPhotoName ??
+            'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
       // 1. Insert ke tabel Profiles
       await supabase.from('profiles').insert({
         'id': user.id,
@@ -75,6 +130,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'email': emailController.text.trim(),
         'role': 'owner',
         'is_approved': false,
+        'profile_photo_url': ownerPhotoUrl,
       });
 
       // 2. Insert ke tabel Kosts (Termasuk Alamat)
@@ -90,6 +146,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'slots': int.tryParse(slotController.text.trim()) ?? 0,
         'join_code': generateCode(),
         'is_approved': false,
+        'photo_url': kostPhotoUrl,
       });
 
       _showNotice("Registrasi Berhasil! Menunggu persetujuan admin.");
@@ -131,7 +188,13 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionTitle("Informasi Akun"),
+                _sectionTitle("Informasi Akun"),
+                  _imagePickerTile(
+                    label: "Foto Profil Owner",
+                    bytes: _ownerPhotoBytes,
+                    onTap: _pickOwnerPhoto,
+                  ),
+                  const SizedBox(height: 16),
                   _inputField("Nama Pengguna", nameController, Icons.person, isName: true),
                   _inputField("Nomor Pengguna (08...)", phoneController, Icons.phone, isPhone: true),
                   _inputField("Email", emailController, Icons.email, isEmail: true),
@@ -140,6 +203,12 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                   const Divider(height: 40),
                   
                   _sectionTitle("Detail Kost"),
+                  _imagePickerTile(
+                    label: "Foto Kost",
+                    bytes: _kostPhotoBytes,
+                    onTap: _pickKostPhoto,
+                  ),
+                  const SizedBox(height: 16),
                   _inputField("Nama Kost", namaKosController, Icons.home_work),
                   
                   // INPUT ALAMAT
@@ -201,6 +270,62 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         contentPadding: EdgeInsets.zero,
         controlAffinity: ListTileControlAffinity.leading,
         dense: true,
+      ),
+    );
+  }
+
+  Widget _imagePickerTile({
+    required String label,
+    required Uint8List? bytes,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDF8F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5D8C8)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: const Color(0xFFEADBC9),
+              backgroundImage: bytes != null ? MemoryImage(bytes) : null,
+              child: bytes == null
+                  ? const Icon(Icons.camera_alt_rounded, color: Color(0xFF9C5A1A))
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF4A2C0A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    bytes == null ? "Tap untuk pilih foto" : "Foto sudah dipilih",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF9C5A1A)),
+          ],
+        ),
       ),
     );
   }

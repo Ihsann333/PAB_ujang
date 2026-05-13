@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/services/media_service.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 class UserHomePage extends StatefulWidget {
@@ -389,6 +391,10 @@ class _UserHomePageState extends State<UserHomePage> {
           ),
         );
       }
+      await AppNotificationService.show(
+        title: 'Ajuan pembayaran terkirim',
+        body: 'Ajuan pembayaran bulan ini berhasil dikirim ke owner.',
+      );
 
       await fetchData();
     } catch (e) {
@@ -494,6 +500,44 @@ class _UserHomePageState extends State<UserHomePage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("Gagal mengajukan keluar: $e")));
+      }
+    }
+  }
+
+  Future<void> _updateProfilePhoto() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final photo = await MediaService.takePhoto();
+      if (photo == null) return;
+
+      final bytes = await photo.readAsBytes();
+      final photoUrl = await MediaService.uploadImageBytes(
+        bytes: bytes,
+        bucket: 'kostly-media',
+        folder: 'profiles/${user.id}',
+        fileName:
+            'user_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
+      await supabase
+          .from('profiles')
+          .update({'profile_photo_url': photoUrl})
+          .eq('id', user.id);
+
+      await fetchData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Foto profil berhasil diperbarui.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal memperbarui foto profil: $e")),
+        );
       }
     }
   }
@@ -631,14 +675,21 @@ class _UserHomePageState extends State<UserHomePage> {
                   color: const Color(0xFF9C5A1A),
                   child: Column(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 35,
                         backgroundColor: Color(0xFFF3E3CF),
-                        child: Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Color(0xFF9C5A1A),
-                        ),
+                        backgroundImage: profileData?['profile_photo_url'] != null
+                            ? NetworkImage(
+                                profileData!['profile_photo_url'].toString(),
+                              )
+                            : null,
+                        child: profileData?['profile_photo_url'] == null
+                            ? const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Color(0xFF9C5A1A),
+                              )
+                            : null,
                       ),
                       const SizedBox(height: 15),
                       Text(
@@ -669,6 +720,23 @@ class _UserHomePageState extends State<UserHomePage> {
                       _buildPopupField(
                         "Email",
                         supabase.auth.currentUser?.email ?? "-",
+                      ),
+
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: _updateProfilePhoto,
+                        icon: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Color(0xFF9C5A1A),
+                          size: 18,
+                        ),
+                        label: Text(
+                          "Ubah Foto Profil",
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF9C5A1A),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 20),
@@ -918,10 +986,15 @@ class _UserHomePageState extends State<UserHomePage> {
       children: [
         GestureDetector(
           onTap: _showProfilePopup,
-          child: const CircleAvatar(
+          child: CircleAvatar(
             radius: 22,
-            backgroundColor: Color(0xFF9C5A1A),
-            child: Icon(Icons.person, color: Colors.white),
+            backgroundColor: const Color(0xFFF3E3CF),
+            backgroundImage: profileData?['profile_photo_url'] != null
+                ? NetworkImage(profileData!['profile_photo_url'].toString())
+                : null,
+            child: profileData?['profile_photo_url'] == null
+                ? const Icon(Icons.person, color: Color(0xFF9C5A1A))
+                : null,
           ),
         ),
         const SizedBox(width: 12),

@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi membutuhkan kamera untuk mengambil foto profil dan foto kost.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>Aplikasi membutuhkan notifikasi untuk pengingat dan pembaruan penting.</string>
 </dict>
 </plist>

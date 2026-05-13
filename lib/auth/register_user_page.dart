@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:kostly_pa/services/media_service.dart';
+import 'dart:typed_data';
 
 class RegisterUserPage extends StatefulWidget {
   const RegisterUserPage({super.key});
@@ -19,6 +21,8 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
 
   bool isLoading = false;
   bool _obscurePassword = true; // State untuk show/hide password
+  Uint8List? _profilePhotoBytes;
+  String? _profilePhotoName;
 
   // Fungsi snackbar biar tampilannya cantik dan informatif
   void _showSnackBar(String message, {bool isError = false}) {
@@ -30,6 +34,34 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
         margin: const EdgeInsets.all(20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
+    );
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    final photo = await MediaService.takePhoto();
+    if (photo == null) return;
+
+    final bytes = await photo.readAsBytes();
+    if (!mounted) return;
+
+    setState(() {
+      _profilePhotoBytes = bytes;
+      _profilePhotoName = photo.name;
+    });
+  }
+
+  Future<String?> _uploadProfilePhoto(String userId) async {
+    final bytes = _profilePhotoBytes;
+    if (bytes == null) return null;
+
+    final fileName = _profilePhotoName ??
+        'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    return MediaService.uploadImageBytes(
+      bytes: bytes,
+      bucket: 'kostly-media',
+      folder: 'profiles/$userId',
+      fileName: fileName,
     );
   }
 
@@ -47,6 +79,8 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       final user = res.user;
       if (user == null) throw "Gagal membuat akun, silahkan coba lagi.";
 
+      final profilePhotoUrl = await _uploadProfilePhoto(user.id);
+
       // Simpan ke table profiles
       await supabase.from('profiles').insert({
         'id': user.id,
@@ -55,6 +89,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
         'email': emailController.text.trim(),
         'role': 'user',
         'is_approved': true,
+        'profile_photo_url': profilePhotoUrl,
       });
 
       _showSnackBar("Registrasi Berhasil! Silahkan Login.");
@@ -97,6 +132,37 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
                 children: [
                   const Icon(Icons.person_add_alt_1_rounded, size: 60, color: Color(0xFF9C5A1A)),
                   const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _pickProfilePhoto,
+                    child: CircleAvatar(
+                      radius: 42,
+                      backgroundColor: const Color(0xFFF3E3CF),
+                      backgroundImage: _profilePhotoBytes != null
+                          ? MemoryImage(_profilePhotoBytes!)
+                          : null,
+                      child: _profilePhotoBytes == null
+                          ? const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 34,
+                              color: Color(0xFF9C5A1A),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _pickProfilePhoto,
+                    child: Text(
+                      _profilePhotoBytes == null
+                          ? "Pilih foto profil"
+                          : "Ubah foto profil",
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF9C5A1A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     "Daftar Penghuni",
                     style: GoogleFonts.sora(

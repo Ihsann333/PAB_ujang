@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'manage_tenants_page.dart';
 import 'dart:math';
+import 'dart:typed_data';
 
 class OwnerProfilePage extends StatefulWidget {
   const OwnerProfilePage({super.key});
@@ -31,6 +33,9 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   bool _includeAir = false;
   bool _includeWifi = false;
   Map<String, dynamic>? ownerProfile;
+  List<Map<String, dynamic>> ownerKosts = [];
+  Uint8List? _newKostPhotoBytes;
+  String? _newKostPhotoName;
 
   // Ambil email dari Auth Supabase
   String get userEmail => supabase.auth.currentUser?.email ?? 'Email tidak ditemukan';
@@ -59,9 +64,17 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
       final data = await supabase.from('profiles').select().eq('id', user.id).single();
+      final kosts = await supabase
+          .from('kosts')
+          .select()
+          .eq('owner_id', user.id)
+          .order('created_at', ascending: false);
       if (mounted) {
         setState(() {
           ownerProfile = Map<String, dynamic>.from(data);
+          ownerKosts = (kosts as List)
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
         });
       }
     } catch (_) {}
@@ -97,6 +110,111 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     }
   }
 
+  Future<void> _updateProfilePhoto() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final photo = await MediaService.takePhoto();
+      if (photo == null) return;
+
+      final bytes = await photo.readAsBytes();
+      final photoUrl = await MediaService.uploadImageBytes(
+        bytes: bytes,
+        bucket: 'kostly-media',
+        folder: 'profiles/${user.id}',
+        fileName:
+            'owner_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
+      await supabase.from('profiles').update({
+        'profile_photo_url': photoUrl,
+      }).eq('id', user.id);
+
+      await _fetchOwnerProfile();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Foto profil berhasil diperbarui.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal memperbarui foto profil: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateKostPhoto() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+    if (ownerKosts.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Belum ada kost yang bisa diubah fotonya."),
+          ),
+        );
+      }
+      return;
+    }
+
+    final selectedKostId = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        title: Text(
+          "Pilih Kost",
+          style: GoogleFonts.sora(fontWeight: FontWeight.w700),
+        ),
+        children: ownerKosts
+            .map(
+              (kost) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, kost['id'].toString()),
+                child: Text(kost['name']?.toString() ?? 'Kost'),
+              ),
+            )
+            .toList(),
+      ),
+    );
+
+    if (selectedKostId == null) return;
+
+    try {
+      final photo = await MediaService.takePhoto();
+      if (photo == null) return;
+
+      final bytes = await photo.readAsBytes();
+      final photoUrl = await MediaService.uploadImageBytes(
+        bytes: bytes,
+        bucket: 'kostly-media',
+        folder: 'kosts/$selectedKostId',
+        fileName:
+            'kost_${selectedKostId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+
+      await supabase.from('kosts').update({
+        'photo_url': photoUrl,
+      }).eq('id', selectedKostId);
+
+      await _fetchOwnerProfile();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Foto kost berhasil diperbarui.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal memperbarui foto kost: $e")),
+        );
+      }
+    }
+  }
+
   Future<void> _saveNewKost(StateSetter setModalState) async {
     if (_nameCtrl.text.isEmpty || _addressCtrl.text.isEmpty || _priceCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mohon lengkapi data utama")));
@@ -106,6 +224,16 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     setModalState(() => isSaving = true);
 
     try {
+      final kostPhotoUrl = _newKostPhotoBytes == null
+          ? null
+          : await MediaService.uploadImageBytes(
+              bytes: _newKostPhotoBytes!,
+              bucket: 'kostly-media',
+              folder: 'kosts/${supabase.auth.currentUser?.id ?? 'unknown'}',
+              fileName:
+                  _newKostPhotoName ?? 'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
+
       await supabase.from('kosts').insert({
         'owner_id': supabase.auth.currentUser?.id,
         'name': _nameCtrl.text.trim(),
@@ -118,6 +246,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         'join_code': _generateJoinCode(),
         'is_approved': false,
         'rules': _rulesCtrl.text.trim(),
+        'photo_url': kostPhotoUrl,
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -133,6 +262,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       _priceCtrl.clear();
       _slotsCtrl.clear();
       _rulesCtrl.clear();
+      _newKostPhotoBytes = null;
+      _newKostPhotoName = null;
       setState(() {
         _includeListrik = false;
         _includeAir = false;
@@ -177,6 +308,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   }
 
   void _showAddKostDialog() {
+    _newKostPhotoBytes = null;
+    _newKostPhotoName = null;
     showDialog(
       context: context,
       barrierDismissible: !isSaving,
@@ -194,6 +327,20 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _buildPhotoPicker(
+                  label: "Foto Kost",
+                  bytes: _newKostPhotoBytes,
+                  onTap: () async {
+                    final photo = await MediaService.takePhoto();
+                    if (photo == null) return;
+                    final bytes = await photo.readAsBytes();
+                    setModalState(() {
+                      _newKostPhotoBytes = bytes;
+                      _newKostPhotoName = photo.name;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
                 _buildField(_nameCtrl, "Nama Kost", Icons.home, "Contoh: Kostly Residence", isName: true),
                 const SizedBox(height: 16),
                 _buildField(_addressCtrl, "Alamat Lengkap", Icons.location_on, "Jl. Merdeka No. 123"),
@@ -374,6 +521,53 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 
+  Widget _buildPhotoPicker({
+    required String label,
+    required Uint8List? bytes,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F0EA),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFFEADBC9),
+              backgroundImage: bytes != null ? MemoryImage(bytes) : null,
+              child: bytes == null
+                  ? const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Color(0xFF9C5A1A),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                bytes == null
+                    ? "Tap untuk pilih $label"
+                    : "$label sudah dipilih",
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF4A2C0A),
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF9C5A1A)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInfoRow(IconData icon, String label, String value, {VoidCallback? onEdit}) {
     return Row(
       children: [
@@ -404,11 +598,29 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           padding: const EdgeInsets.symmetric(vertical: 60),
           child: Column(
             children: [
-              const CircleAvatar(
-                radius: 50, backgroundColor: Color(0xFF9C5A1A), 
-                child: Icon(Icons.person, size: 50, color: Colors.white)
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: const Color(0xFFEADBC9),
+                backgroundImage: ownerProfile?['profile_photo_url'] != null
+                    ? NetworkImage(ownerProfile!['profile_photo_url'].toString())
+                    : null,
+                child: ownerProfile?['profile_photo_url'] == null
+                    ? const Icon(Icons.person, size: 50, color: Colors.white)
+                    : null,
               ),
               const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: _updateProfilePhoto,
+                icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                label: Text(
+                  "Pilih / Ubah Foto Profil",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF9C5A1A),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Text(
                 ownerProfile?['full_name'] ?? "Owner",
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 28, color: const Color(0xFF2D241A)),
@@ -430,6 +642,17 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                       _buildInfoRow(Icons.email_outlined, "Email Pengguna", userEmail),
                       const Divider(height: 20),
                       _buildInfoRow(Icons.lock_outline, "Password Akun", "••••••••", onEdit: _showChangePasswordDialog),
+                      const Divider(height: 20),
+                      _buildInfoRow(
+                        Icons.home_work_outlined,
+                        "Foto Kost",
+                        ownerKosts.isEmpty
+                            ? "Belum ada kost"
+                            : (ownerKosts.first['photo_url'] != null
+                                ? "Sudah ada foto"
+                                : "Belum ada foto"),
+                        onEdit: _updateKostPhoto,
+                      ),
                     ],
                   ),
                 ),
@@ -463,6 +686,21 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                   onPressed: _showAddKostDialog,
                   icon: const Icon(Icons.add_business),
                   label: Text("Tambah Unit Kost Baru", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF9C5A1A),
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                  ),
+                  onPressed: _updateKostPhoto,
+                  icon: const Icon(Icons.photo_camera_back_outlined),
+                  label: Text("Pilih / Ubah Foto Kost", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 24),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 // --- BAGIAN INTEGRASI: HALAMAN OWNER HOME ---
@@ -244,6 +245,10 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           const SnackBar(content: Text('Pembayaran berhasil di-ACC.')),
         );
       }
+      await AppNotificationService.show(
+        title: 'Pembayaran disetujui',
+        body: 'Satu pembayaran berhasil di-ACC.',
+      );
 
       await refreshAllData();
     } catch (e) {
@@ -448,7 +453,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                     Text(
                       pendingCount > 0
                           ? "$pendingCount penghuni melewati jatuh tempo"
-                          : "Belum ada penghuni yang telat bayar",
+                          : "Tidak ada tagihan yang terlambat saat ini",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF6B6257),
@@ -488,7 +493,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                "Kalau ada penghuni yang belum membayar setelah tanggal jatuh tempo, notifikasinya akan muncul di sini.",
+                "Notifikasi keterlambatan pembayaran penghuni akan muncul di sini.",
                 style: GoogleFonts.plusJakartaSans(
                   color: const Color(0xFF6B6257),
                   height: 1.45,
