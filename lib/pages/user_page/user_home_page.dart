@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserHomePage extends StatefulWidget {
   const UserHomePage({super.key});
@@ -25,6 +27,7 @@ class _UserHomePageState extends State<UserHomePage> {
     symbol: 'Rp ',
     decimalDigits: 0,
   );
+  final TextEditingController _passwordCtrl = TextEditingController();
 
   Map? profileData;
   Map? kost;
@@ -36,6 +39,12 @@ class _UserHomePageState extends State<UserHomePage> {
   void initState() {
     super.initState();
     fetchData();
+  }
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> fetchData() async {
@@ -509,7 +518,7 @@ class _UserHomePageState extends State<UserHomePage> {
     if (user == null) return;
 
     try {
-      final photo = await MediaService.takePhoto();
+      final photo = await MediaService.pickImage(context);
       if (photo == null) return;
 
       final bytes = await photo.readAsBytes();
@@ -540,6 +549,140 @@ class _UserHomePageState extends State<UserHomePage> {
         );
       }
     }
+  }
+
+  Future<void> _updatePassword() async {
+    if (_passwordCtrl.text.trim().length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password minimal 6 karakter"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await supabase.auth.updateUser(
+        UserAttributes(password: _passwordCtrl.text.trim()),
+      );
+
+      if (!mounted) return;
+      _passwordCtrl.clear();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Password berhasil diperbarui!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Gagal memperbarui password: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showChangePasswordDialog() {
+    _passwordCtrl.clear();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          "Ubah Password",
+          style: GoogleFonts.sora(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF9C5A1A),
+          ),
+        ),
+        content: TextField(
+          controller: _passwordCtrl,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: "Password Baru",
+            filled: true,
+            fillColor: const Color(0xFFF5F0EA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: _updatePassword,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C5A1A),
+            ),
+            child: const Text(
+              "Simpan",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _resolveProfileValue(String key, {String fallback = '-'}) {
+    final value = profileData?[key];
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
+
+  String _resolveUserRoleLabel() {
+    final role = _resolveProfileValue('role').toLowerCase();
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'owner':
+        return 'Owner';
+      case 'user':
+        return 'User';
+      default:
+        return role == '-' ? '-' : role;
+    }
+  }
+
+  String _resolveApprovalLabel() {
+    final approved = profileData?['is_approved'];
+    if (approved == true) return 'Aktif';
+    if (approved == false) return 'Menunggu Persetujuan';
+    return '-';
+  }
+
+  Future<void> _openKostLocation() async {
+    try {
+      await KostLocationService.openMap(kost);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  String _resolveJoinDate() {
+    for (final key in const ['kost_joined_at', 'entry_date', 'join_date']) {
+      final raw = profileData?[key];
+      if (raw == null) continue;
+      final parsed = DateTime.tryParse(raw.toString());
+      if (parsed != null) {
+        return DateFormat('dd MMMM yyyy', 'id_ID').format(parsed.toLocal());
+      }
+    }
+    return '-';
   }
 
   void _showJoinKostDialog() {
@@ -711,15 +854,42 @@ class _UserHomePageState extends State<UserHomePage> {
                     children: [
                       _buildPopupField(
                         "Nama Pengguna",
-                        profileData?['full_name'] ?? "-",
+                        _resolveProfileValue('full_name'),
                       ),
                       _buildPopupField(
-                        "Nomor Pengguna",
-                        profileData?['phone_number'] ?? "-",
+                        "Nomor Telepon",
+                        _resolveProfileValue('phone_number'),
                       ),
                       _buildPopupField(
                         "Email",
-                        supabase.auth.currentUser?.email ?? "-",
+                        supabase.auth.currentUser?.email ??
+                            _resolveProfileValue('email'),
+                      ),
+                      _buildPopupField(
+                        "Peran Akun",
+                        _resolveUserRoleLabel(),
+                      ),
+                      _buildPopupField(
+                        "Status Akun",
+                        _resolveApprovalLabel(),
+                      ),
+                      _buildPopupField(
+                        "Kost Ditempati",
+                        kost?['name']?.toString() ?? "-",
+                      ),
+                      _buildPopupField(
+                        "Tanggal Masuk Kost",
+                        _resolveJoinDate(),
+                      ),
+                      _buildPopupField(
+                        "ID Pengguna",
+                        supabase.auth.currentUser?.id ?? "-",
+                      ),
+                      _buildPopupField(
+                        "Password",
+                        "••••••••",
+                        actionLabel: "Ubah",
+                        onAction: _showChangePasswordDialog,
                       ),
 
                       const SizedBox(height: 4),
@@ -739,7 +909,21 @@ class _UserHomePageState extends State<UserHomePage> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
+                      _buildRoleActionButton(
+                        title: "Keluar Akun Penghuni",
+                        subtitle:
+                            "Logout cepat tanpa mengubah data sewa yang sedang aktif.",
+                        icon: Icons.logout_rounded,
+                        backgroundColor: const Color(0xFFFFF3F4),
+                        foregroundColor: const Color(0xFFE24D56),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showLogoutConfirmation();
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
 
                       _buildActionButton(
                         "Tutup",
@@ -758,7 +942,12 @@ class _UserHomePageState extends State<UserHomePage> {
     );
   }
 
-  Widget _buildPopupField(String label, String value) {
+  Widget _buildPopupField(
+    String label,
+    String value, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -771,12 +960,102 @@ class _UserHomePageState extends State<UserHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ),
+              if (actionLabel != null && onAction != null)
+                TextButton(
+                  onPressed: onAction,
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    actionLabel,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF9C5A1A),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           Text(
             value,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoleActionButton({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: foregroundColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: foregroundColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: foregroundColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: foregroundColor.withOpacity(0.8),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: foregroundColor),
+          ],
+        ),
       ),
     );
   }
@@ -819,7 +1098,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
                 // TITLE
                 Text(
-                  "Keluar Akun",
+                  "Keluar Akun Penghuni",
                   style: GoogleFonts.sora(
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
@@ -831,7 +1110,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
                 // MESSAGE
                 Text(
-                  "Yakin ingin keluar dari akun sekarang?",
+                  "Anda akan keluar dari akun penghuni ini. Status sewa dan data profil tetap aman saat login kembali.",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
@@ -902,7 +1181,7 @@ class _UserHomePageState extends State<UserHomePage> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         child: Text(
-                          "Logout",
+                          "Keluar",
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                           ),
@@ -984,18 +1263,15 @@ class _UserHomePageState extends State<UserHomePage> {
   Widget _buildTopHeader() {
     return Row(
       children: [
-        GestureDetector(
-          onTap: _showProfilePopup,
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: const Color(0xFFF3E3CF),
-            backgroundImage: profileData?['profile_photo_url'] != null
-                ? NetworkImage(profileData!['profile_photo_url'].toString())
-                : null,
-            child: profileData?['profile_photo_url'] == null
-                ? const Icon(Icons.person, color: Color(0xFF9C5A1A))
-                : null,
-          ),
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: const Color(0xFFF3E3CF),
+          backgroundImage: profileData?['profile_photo_url'] != null
+              ? NetworkImage(profileData!['profile_photo_url'].toString())
+              : null,
+          child: profileData?['profile_photo_url'] == null
+              ? const Icon(Icons.person, color: Color(0xFF9C5A1A))
+              : null,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1007,13 +1283,6 @@ class _UserHomePageState extends State<UserHomePage> {
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                ),
-              ),
-              Text(
-                "Lihat Profil",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: Colors.grey[600],
                 ),
               ),
             ],
@@ -1047,11 +1316,6 @@ class _UserHomePageState extends State<UserHomePage> {
               ],
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: _showLogoutConfirmation,
-          icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
         ),
       ],
     );
@@ -1130,9 +1394,49 @@ class _UserHomePageState extends State<UserHomePage> {
                 : "Tidak Tersedia",
           ),
           _buildMultilineInfoBox(
+            Icons.location_on_rounded,
+            "Alamat Kost:",
+            kost!['address']?.toString().trim().isNotEmpty == true
+                ? kost!['address'].toString()
+                : '-',
+          ),
+          _buildMultilineInfoBox(
+            Icons.my_location_rounded,
+            "Titik Lokasi:",
+            KostLocationService.hasLocation(kost)
+                ? KostLocationService.coordinateLabelFromMap(kost)
+                : 'Belum diatur owner',
+          ),
+          _buildMultilineInfoBox(
             Icons.sticky_note_2_rounded,
             "Catatan Kost:",
             _resolveKostNote(kost),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: KostLocationService.hasLocation(kost)
+                  ? _openKostLocation
+                  : null,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF9C5A1A),
+                side: const BorderSide(color: Color(0xFFE0C9AF)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: Text(
+                KostLocationService.hasLocation(kost)
+                    ? "Lihat Lokasi Kost"
+                    : "Lokasi Kost Belum Tersedia",
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(

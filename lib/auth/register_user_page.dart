@@ -38,7 +38,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
   }
 
   Future<void> _pickProfilePhoto() async {
-    final photo = await MediaService.takePhoto();
+    final photo = await MediaService.pickImage(context);
     if (photo == null) return;
 
     final bytes = await photo.readAsBytes();

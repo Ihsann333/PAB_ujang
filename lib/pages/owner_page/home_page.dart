@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/pages/owner_page/manage_tenants_page.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
@@ -34,7 +37,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   List<Map<String, dynamic>> paymentRequests = [];
   List<Map<String, dynamic>> latePaymentNotifications = [];
   List<Map<String, dynamic>> allTenants = [];
-  bool showTenantList = false;
+  int pendingExitRequests = 0;
 
   @override
   void initState() {
@@ -223,6 +226,9 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           allTenants = profiles;
           paymentRequests = payments;
           latePaymentNotifications = lateNotifications;
+          pendingExitRequests = profiles
+              .where((profile) => profile['exit_request'] == true)
+              .length;
         });
       }
     } catch (e) {
@@ -399,6 +405,162 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
         ).showSnackBar(SnackBar(content: Text('Gagal kirim reminder: $e')));
       }
     }
+  }
+
+  void _showLogoutConfirmation() {
+    final pageContext = context;
+
+    showDialog(
+      context: pageContext,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE24D56).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFE24D56),
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "Keluar Mode Owner",
+                  style: GoogleFonts.sora(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: const Color(0xFF2D241A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Anda akan meninggalkan dashboard pemilik kost. Proses pengelolaan bisa dilanjutkan lagi setelah login ulang.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: const Color(0xFF6B6257),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(
+                          dialogContext,
+                          rootNavigator: true,
+                        ).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF9C5A1A),
+                          side: const BorderSide(color: Color(0xFF9C5A1A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Batal",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.of(
+                            dialogContext,
+                            rootNavigator: true,
+                          ).pop();
+
+                          await supabase.auth.signOut();
+
+                          if (mounted) {
+                            Navigator.of(
+                              pageContext,
+                              rootNavigator: true,
+                            ).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE24D56),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Keluar Sekarang",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Management",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              Text(
+                "Kostly Owner",
+                style: GoogleFonts.sora(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2D241A),
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Logout',
+          onPressed: _showLogoutConfirmation,
+          icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+        ),
+      ],
+    );
   }
 
   Widget _buildPendingPaymentCard() {
@@ -630,29 +792,15 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text(
-                "Management",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              Text(
-                "Kostly Owner",
-                style: GoogleFonts.sora(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF2D241A),
-                ),
-              ),
+              _buildTopHeader(),
               const SizedBox(height: 20),
 
               _buildStatCards(),
               const SizedBox(height: 12),
               _profitCard(currency.format(totalProfit)),
+              const SizedBox(height: 12),
+              _buildExitRequestCard(),
               _buildPendingPaymentCard(),
-
-              _buildCombinedTenantList(),
 
               const SizedBox(height: 32),
               Text(
@@ -674,28 +822,57 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   Widget _buildStatCards() {
     return Row(
       children: [
-        _statItem(Icons.domain_rounded, totalKos.toString(), "Total Kost"),
+        _statItem(
+          Icons.domain_rounded,
+          totalKos.toString(),
+          "Total Kost",
+          onTap: _openKostListPage,
+        ),
         const SizedBox(width: 12),
         _statItem(
           Icons.people_alt_rounded,
           totalPenghuni.toString(),
           "Penghuni",
+          onTap: _openTenantManagementPage,
         ),
       ],
     );
   }
 
-  Widget _statItem(IconData icon, String val, String label) {
+  void _openKostListPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OwnerKosListPage(
+          kosList: kosList
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList(),
+          currency: currency,
+        ),
+      ),
+    );
+  }
+
+  void _openTenantManagementPage({bool focusExitRequests = false}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OwnerManageTenantsPage(
+          initialShowExitRequests: focusExitRequests,
+        ),
+      ),
+    );
+  }
+
+  Widget _statItem(
+    IconData icon,
+    String val,
+    String label, {
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            showTenantList = !showTenantList;
-          });
-          if (showTenantList) {
-            debugPrint("Menampilkan List Penghuni");
-          }
-        },
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -732,6 +909,72 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExitRequestCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEADBC9)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1DD),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.logout_rounded,
+              color: Color(0xFFDD8A18),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Permintaan Keluar Kost',
+                  style: GoogleFonts.sora(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF2D241A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  pendingExitRequests > 0
+                      ? '$pendingExitRequests penghuni menunggu ACC keluar kost.'
+                      : 'Belum ada permintaan keluar kost saat ini.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: const Color(0xFF6B6257),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () =>
+                _openTenantManagementPage(focusExitRequests: true),
+            child: Text(
+              'Tinjau',
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF9C5A1A),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -774,164 +1017,6 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCombinedTenantList() {
-    if (!showTenantList || allTenants.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 25),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Detail Status Penghuni",
-              style: GoogleFonts.sora(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            IconButton(
-              onPressed: () => setState(() => showTenantList = false),
-              icon: const Icon(Icons.close_rounded),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ...allTenants.map((tenant) {
-          // Logika pencarian status pembayaran
-          final Map<String, dynamic> pay = paymentRequests.firstWhere(
-            (p) =>
-                p['profile_id'] == tenant['id'] ||
-                p['tenant_id'] == tenant['id'],
-            orElse: () => <String, dynamic>{},
-          );
-
-          String status = (pay['status'] ?? 'belum').toString().toLowerCase();
-          bool isPending = status == 'pending';
-          bool isSuccess = status == 'success' || status == 'approved';
-
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DetailPenghuniPage(
-                    penghuni: {
-                      'name': tenant['full_name'] ?? "Anonim",
-                      'email': tenant['email'] ?? "Email tidak tersedia",
-                      'payment_status': status,
-                      'rent_price': tenant['kosts']?['price'] ?? 0,
-                      'entry_date': _resolveTenantJoinDateRaw(tenant),
-                      'phone': tenant['phone_number'] ?? "Belum ada No. HP",
-                      'room_number': tenant['room_number'] ?? '-',
-                      'nik': tenant['nik'] ?? "Belum terupload",
-                    },
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isPending ? Colors.orange : Colors.grey.shade100,
-                  width: isPending ? 1.5 : 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: const Color(0xFFEADBC9),
-                        child: Text(
-                          (tenant['full_name'] ?? "U")[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Color(0xFF9C5A1A),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tenant['full_name'] ?? "Tanpa Nama",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              tenant['kosts']?['name'] ??
-                                  'Unit tidak diketahui',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _badge(
-                        isSuccess
-                            ? "LUNAS"
-                            : (isPending ? "PENDING" : "BELUM BAYAR"),
-                        isSuccess
-                            ? Colors.green
-                            : (isPending ? Colors.orange : Colors.red),
-                      ),
-                    ],
-                  ),
-                  // Tampilkan tombol ACC hanya jika status pending
-                  if (isPending) ...[
-                    const Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Nominal: ${currency.format(pay['amount'] ?? 0)}",
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _approvePayment(pay['id']),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text("ACC"),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ],
     );
   }
 
@@ -1143,6 +1228,88 @@ class DetailKosPage extends StatelessWidget {
 
                   const SizedBox(height: 35),
 
+                  Text(
+                    "Lokasi Kost",
+                    style: GoogleFonts.sora(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F5F2),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFFEADBC8)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              color: Color(0xFF9C5A1A),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                kos['address'] ?? "Alamat belum diatur",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade700,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          KostLocationService.hasLocation(kos)
+                              ? "Koordinat: ${KostLocationService.coordinateLabelFromMap(kos)}"
+                              : "Koordinat GPS belum diatur.",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF6B6257),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: KostLocationService.hasLocation(kos)
+                              ? () async {
+                                  try {
+                                    await KostLocationService.openMap(kos);
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(e.toString())),
+                                    );
+                                  }
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF9C5A1A),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.map_outlined, size: 18),
+                          label: const Text("Buka di Maps"),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 35),
+
                   // Alamat
                   Text(
                     "Lokasi",
@@ -1220,6 +1387,104 @@ class DetailKosPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class OwnerKosListPage extends StatelessWidget {
+  final List<Map<String, dynamic>> kosList;
+  final NumberFormat currency;
+
+  const OwnerKosListPage({
+    super.key,
+    required this.kosList,
+    required this.currency,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2E8DA),
+      appBar: AppBar(
+        title: Text(
+          'Daftar Unit Kost',
+          style: GoogleFonts.sora(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: const Color(0xFF9C5A1A),
+        foregroundColor: Colors.white,
+      ),
+      body: kosList.isEmpty
+          ? Center(
+              child: Text(
+                'Belum ada unit kost yang terdaftar.',
+                style: GoogleFonts.plusJakartaSans(),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: kosList.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final kos = kosList[index];
+                final bool isApproved = kos['is_approved'] == true;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFEADBC9)),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: CircleAvatar(
+                      backgroundColor: isApproved
+                          ? const Color(0xFF9C5A1A)
+                          : Colors.grey.shade300,
+                      child: const Icon(
+                        Icons.home_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    title: Text(
+                      kos['name'] ?? '-',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          currency.format(kos['price'] ?? 0),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: const Color(0xFF9C5A1A),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${kos['active_tenants'] ?? 0} penghuni aktif',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: const Color(0xFF6B6257),
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DetailKosPage(kos: kos),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 }

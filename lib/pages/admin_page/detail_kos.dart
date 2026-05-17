@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 
 class DetailKosPage extends StatelessWidget {
   final Map kos;
@@ -89,6 +90,84 @@ class DetailKosPage extends StatelessWidget {
                       _buildFasilitasItem(Icons.water_drop, "Air", cekFasilitas(kos['include_water'] ?? kos['is_air'])),
                       _buildFasilitasItem(Icons.bolt, "Listrik", cekFasilitas(kos['include_electricity'] ?? kos['is_listrik'])),
                     ],
+                  ),
+
+                  const SizedBox(height: 35),
+                  Text("Lokasi Kost", style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F5F2),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFFEADBC8)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFF9C5A1A),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                kos['address'] ?? "Alamat belum diisi",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  color: Colors.brown.shade900,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          KostLocationService.hasLocation(kos)
+                              ? "Koordinat: ${KostLocationService.coordinateLabelFromMap(kos)}"
+                              : "Koordinat GPS belum diatur owner.",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: const Color(0xFF6B6257),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton.icon(
+                            onPressed: KostLocationService.hasLocation(kos)
+                                ? () async {
+                                    try {
+                                      await KostLocationService.openMap(kos);
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(e.toString())),
+                                      );
+                                    }
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9C5A1A),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.map_outlined, size: 18),
+                            label: const Text("Buka di Maps"),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 35),

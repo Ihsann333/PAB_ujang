@@ -3,7 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 class OwnerManageTenantsPage extends StatefulWidget {
-  const OwnerManageTenantsPage({super.key});
+  const OwnerManageTenantsPage({
+    super.key,
+    this.initialShowExitRequests = false,
+  });
+
+  final bool initialShowExitRequests;
 
   @override
   State<OwnerManageTenantsPage> createState() => _OwnerManageTenantsPageState();
@@ -13,14 +18,16 @@ class _OwnerManageTenantsPageState extends State<OwnerManageTenantsPage> {
   final supabase = SupabaseService.client;
   List tenants = [];
   bool isLoading = true;
+  bool _showExitRequestsFirst = false;
 
   @override
   void initState() {
     super.initState();
+    _showExitRequestsFirst = widget.initialShowExitRequests;
     fetchTenants();
   }
 
-Future<void> fetchTenants() async {
+  Future<void> fetchTenants() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) {
@@ -29,11 +36,19 @@ Future<void> fetchTenants() async {
       }
 
       // 1. Ambil ID kost milik owner ini
-      final myKosts = await supabase.from('kosts').select('id').eq('owner_id', user.id);
+      final myKosts = await supabase
+          .from('kosts')
+          .select('id')
+          .eq('owner_id', user.id);
       final List ids = (myKosts as List).map((k) => k['id']).toList();
 
       if (ids.isEmpty) {
-        if (mounted) setState(() { tenants = []; isLoading = false; });
+        if (mounted) {
+          setState(() {
+            tenants = [];
+            isLoading = false;
+          });
+        }
         return;
       }
 
@@ -51,7 +66,7 @@ Future<void> fetchTenants() async {
 
       if (mounted) {
         setState(() {
-          tenants = data as List;
+          tenants = List<Map<String, dynamic>>.from(data as List);
           isLoading = false;
         });
       }
@@ -63,18 +78,24 @@ Future<void> fetchTenants() async {
 
   Future<void> handleUserExit(String userId, {required bool isApproved}) async {
     try {
-      Map<String, dynamic> updateData = isApproved 
-          ? {'kost_id': null, 'exit_request': false} 
+      Map<String, dynamic> updateData = isApproved
+          ? {'kost_id': null, 'exit_request': false}
           : {'exit_request': false};
 
       await supabase.from('profiles').update(updateData).eq('id', userId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isApproved ? 'Berhasil diproses' : 'Permintaan ditolak'))
+          SnackBar(
+            content: Text(
+              isApproved
+                  ? 'Permintaan keluar berhasil disetujui.'
+                  : 'Permintaan keluar berhasil ditolak.',
+            ),
+          ),
         );
-        fetchTenants();
       }
+      await fetchTenants();
     } catch (e) {
       debugPrint('Error: $e');
     }
@@ -82,6 +103,16 @@ Future<void> fetchTenants() async {
 
   @override
   Widget build(BuildContext context) {
+    final exitRequests = tenants
+        .where((tenant) => tenant['exit_request'] == true)
+        .toList();
+    final activeTenants = tenants
+        .where((tenant) => tenant['exit_request'] != true)
+        .toList();
+    final sections = _showExitRequestsFirst
+        ? [exitRequests, activeTenants]
+        : [activeTenants, exitRequests];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2E8DA),
       appBar: AppBar(
@@ -93,93 +124,256 @@ Future<void> fetchTenants() async {
         foregroundColor: Colors.white,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF9C5A1A)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+            )
           : tenants.isEmpty
-              ? Center(child: Text('Belum ada penghuni aktif.', style: GoogleFonts.plusJakartaSans()))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: tenants.length,
-                  itemBuilder: (context, index) {
-                    final t = tenants[index];
-                    final bool isRequesting = t['exit_request'] ?? false;
-                    
-                    // Ambil nama kost dari hasil join
-                    final String kostName = t['kosts']?['name'] ?? 'Kost Tidak Diketahui';
-                    
-                    final String tenantName = (t['full_name']?.toString().trim().isNotEmpty ?? false)
-                        ? t['full_name'].toString().trim()
-                        : (t['email']?.toString().split('@')[0] ?? 'User');
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: isRequesting ? Colors.orange[50] : Colors.white,
-                      child: ListTile(
-                        onTap: () => _showTenantInfoPopup(t),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: isRequesting ? Colors.orange : const Color(0xFF9C5A1A),
-                          child: const Icon(Icons.person, color: Colors.white),
-                        ),
-                        title: Text(
-                          tenantName,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            // INFO UNIT KOS DI LIST
-                            Row(
-                              children: [
-                                const Icon(Icons.home_work_rounded, size: 14, color: Color(0xFF9C5A1A)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  kostName,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                    color: const Color(0xFF9C5A1A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              isRequesting ? 'Ingin keluar kost' : 'Status: Aktif',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: isRequesting ? Colors.orange[900] : Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isRequesting) ...[
-                              IconButton(
-                                icon: const Icon(Icons.check_circle, color: Colors.green), 
-                                onPressed: () => handleUserExit(t['id'], isApproved: true)
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.cancel, color: Colors.red), 
-                                onPressed: () => handleUserExit(t['id'], isApproved: false)
-                              ),
-                            ] else
-                              IconButton(
-                                icon: const Icon(Icons.person_remove, color: Colors.redAccent), 
-                                onPressed: () => _showKickConfirm(t['id'], tenantName)
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+          ? Center(
+              child: Text(
+                'Belum ada penghuni yang terhubung ke kost Anda.',
+                style: GoogleFonts.plusJakartaSans(),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildSummaryCard(
+                  totalTenants: tenants.length,
+                  exitRequestCount: exitRequests.length,
                 ),
+                const SizedBox(height: 18),
+                for (final section in sections) ...[
+                  if (identical(section, exitRequests))
+                    _buildTenantSection(
+                      title: 'Permintaan Keluar',
+                      subtitle:
+                          'ACC atau tolak penghuni yang ingin keluar dari kost.',
+                      tenants: exitRequests,
+                      emptyLabel:
+                          'Belum ada penghuni yang mengajukan keluar kost.',
+                      isExitSection: true,
+                    ),
+                  if (identical(section, activeTenants))
+                    _buildTenantSection(
+                      title: 'Penghuni Aktif',
+                      subtitle: 'Daftar penghuni yang saat ini masih menempati kost.',
+                      tenants: activeTenants,
+                      emptyLabel: 'Belum ada penghuni aktif.',
+                      isExitSection: false,
+                    ),
+                  const SizedBox(height: 18),
+                ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildSummaryCard({
+    required int totalTenants,
+    required int exitRequestCount,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE9D7C2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildSummaryItem(
+              label: 'Total Penghuni',
+              value: totalTenants.toString(),
+              color: const Color(0xFF9C5A1A),
+              icon: Icons.people_alt_rounded,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildSummaryItem(
+              label: 'Minta Keluar',
+              value: exitRequestCount.toString(),
+              color: const Color(0xFFDD8A18),
+              icon: Icons.logout_rounded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem({
+    required String label,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: GoogleFonts.sora(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF2D241A),
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: const Color(0xFF6B6257),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTenantSection({
+    required String title,
+    required String subtitle,
+    required List tenants,
+    required String emptyLabel,
+    required bool isExitSection,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.sora(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2D241A),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: const Color(0xFF6B6257),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (tenants.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE9D7C2)),
+            ),
+            child: Text(
+              emptyLabel,
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF6B6257),
+              ),
+            ),
+          )
+        else
+          ...tenants.map((tenant) => _buildTenantCard(tenant, isExitSection)),
+      ],
+    );
+  }
+
+  Widget _buildTenantCard(Map tenant, bool isExitSection) {
+    final bool isRequesting = tenant['exit_request'] == true;
+    final String kostName = tenant['kosts']?['name'] ?? 'Kost tidak diketahui';
+    final String tenantName =
+        (tenant['full_name']?.toString().trim().isNotEmpty ?? false)
+        ? tenant['full_name'].toString().trim()
+        : (tenant['email']?.toString().split('@')[0] ?? 'User');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: isRequesting ? Colors.orange[50] : Colors.white,
+      child: ListTile(
+        onTap: () => _showTenantInfoPopup(tenant),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: isRequesting
+              ? Colors.orange
+              : const Color(0xFF9C5A1A),
+          child: const Icon(Icons.person, color: Colors.white),
+        ),
+        title: Text(
+          tenantName,
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.home_work_rounded,
+                  size: 14,
+                  color: Color(0xFF9C5A1A),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    kostName,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: const Color(0xFF9C5A1A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              isRequesting ? 'Mengajukan keluar kost' : 'Status: Aktif',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: isRequesting ? Colors.orange[900] : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isExitSection) ...[
+              IconButton(
+                tooltip: 'Setujui keluar',
+                icon: const Icon(Icons.check_circle, color: Colors.green),
+                onPressed: () => handleUserExit(tenant['id'], isApproved: true),
+              ),
+              IconButton(
+                tooltip: 'Tolak permintaan',
+                icon: const Icon(Icons.cancel, color: Colors.red),
+                onPressed: () => handleUserExit(tenant['id'], isApproved: false),
+              ),
+            ] else
+              IconButton(
+                tooltip: 'Keluarkan penghuni',
+                icon: const Icon(Icons.person_remove, color: Colors.redAccent),
+                onPressed: () => _showKickConfirm(tenant['id'], tenantName),
+              ),
+          ],
+        ),
+      ),
     );
   }
 

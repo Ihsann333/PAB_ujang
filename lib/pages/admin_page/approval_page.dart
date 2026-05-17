@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 TextStyle _soraApproval({
@@ -530,6 +531,40 @@ class _ApprovalPageState extends State<ApprovalPage> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F1E8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEADBC9)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "VALIDASI LOKASI",
+                  style: _jakartaApproval(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF9C5A1A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  KostLocationService.hasLocation(k)
+                      ? "Koordinat tersedia: ${KostLocationService.coordinateLabelFromMap(k)}"
+                      : "Koordinat GPS belum diatur owner. Admin hanya bisa cek alamat teks.",
+                  style: _jakartaApproval(
+                    fontSize: 12,
+                    color: const Color(0xFF4A3E32),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -36,6 +37,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   List<Map<String, dynamic>> ownerKosts = [];
   Uint8List? _newKostPhotoBytes;
   String? _newKostPhotoName;
+  KostLocationData? _newKostLocation;
 
   // Ambil email dari Auth Supabase
   String get userEmail => supabase.auth.currentUser?.email ?? 'Email tidak ditemukan';
@@ -115,7 +117,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     if (user == null) return;
 
     try {
-      final photo = await MediaService.takePhoto();
+      final photo = await MediaService.pickImage(context);
       if (photo == null) return;
 
       final bytes = await photo.readAsBytes();
@@ -183,7 +185,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     if (selectedKostId == null) return;
 
     try {
-      final photo = await MediaService.takePhoto();
+      final photo = await MediaService.pickImage(context);
       if (photo == null) return;
 
       final bytes = await photo.readAsBytes();
@@ -215,6 +217,66 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     }
   }
 
+  Future<void> _updateKostLocation() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+    if (ownerKosts.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Belum ada kost yang bisa diatur lokasinya."),
+          ),
+        );
+      }
+      return;
+    }
+
+    final selectedKostId = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        backgroundColor: const Color(0xFFFFFBF7),
+        title: Text(
+          "Pilih Kost",
+          style: GoogleFonts.sora(fontWeight: FontWeight.w700),
+        ),
+        children: ownerKosts
+            .map(
+              (kost) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, kost['id'].toString()),
+                child: Text(kost['name']?.toString() ?? 'Kost'),
+              ),
+            )
+            .toList(),
+      ),
+    );
+
+    if (selectedKostId == null) return;
+
+    try {
+      final location = await KostLocationService.getCurrentLocation();
+      await KostLocationService.saveKostWithLocation(
+        supabase: supabase,
+        kostId: selectedKostId,
+        basePayload: {},
+        location: location,
+      );
+
+      await _fetchOwnerProfile();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lokasi kost berhasil diperbarui.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal memperbarui lokasi kost: $e")),
+        );
+      }
+    }
+  }
+
   Future<void> _saveNewKost(StateSetter setModalState) async {
     if (_nameCtrl.text.isEmpty || _addressCtrl.text.isEmpty || _priceCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mohon lengkapi data utama")));
@@ -234,21 +296,25 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                   _newKostPhotoName ?? 'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
             );
 
-      await supabase.from('kosts').insert({
-        'owner_id': supabase.auth.currentUser?.id,
-        'name': _nameCtrl.text.trim(),
-        'address': _addressCtrl.text.trim(),
-        'price': int.tryParse(_priceCtrl.text.trim()) ?? 0,
-        'slots': int.tryParse(_slotsCtrl.text.trim()) ?? 0,
-        'include_electricity': _includeListrik,
-        'include_water': _includeAir,
-        'include_wifi': _includeWifi,
-        'join_code': _generateJoinCode(),
-        'is_approved': false,
-        'rules': _rulesCtrl.text.trim(),
-        'photo_url': kostPhotoUrl,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+      await KostLocationService.saveKostWithLocation(
+        supabase: supabase,
+        basePayload: {
+          'owner_id': supabase.auth.currentUser?.id,
+          'name': _nameCtrl.text.trim(),
+          'address': _addressCtrl.text.trim(),
+          'price': int.tryParse(_priceCtrl.text.trim()) ?? 0,
+          'slots': int.tryParse(_slotsCtrl.text.trim()) ?? 0,
+          'include_electricity': _includeListrik,
+          'include_water': _includeAir,
+          'include_wifi': _includeWifi,
+          'join_code': _generateJoinCode(),
+          'is_approved': false,
+          'rules': _rulesCtrl.text.trim(),
+          'photo_url': kostPhotoUrl,
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        location: _newKostLocation,
+      );
 
       if (mounted) {
         Navigator.pop(context);
@@ -264,6 +330,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       _rulesCtrl.clear();
       _newKostPhotoBytes = null;
       _newKostPhotoName = null;
+      _newKostLocation = null;
       setState(() {
         _includeListrik = false;
         _includeAir = false;
@@ -310,6 +377,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   void _showAddKostDialog() {
     _newKostPhotoBytes = null;
     _newKostPhotoName = null;
+    _newKostLocation = null;
     showDialog(
       context: context,
       barrierDismissible: !isSaving,
@@ -331,7 +399,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                   label: "Foto Kost",
                   bytes: _newKostPhotoBytes,
                   onTap: () async {
-                    final photo = await MediaService.takePhoto();
+                    final photo = await MediaService.pickImage(context);
                     if (photo == null) return;
                     final bytes = await photo.readAsBytes();
                     setModalState(() {
@@ -344,6 +412,26 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                 _buildField(_nameCtrl, "Nama Kost", Icons.home, "Contoh: Kostly Residence", isName: true),
                 const SizedBox(height: 16),
                 _buildField(_addressCtrl, "Alamat Lengkap", Icons.location_on, "Jl. Merdeka No. 123"),
+                const SizedBox(height: 16),
+                _buildLocationPicker(
+                  location: _newKostLocation,
+                  onTap: () async {
+                    try {
+                      final location =
+                          await KostLocationService.getCurrentLocation();
+                      setModalState(() => _newKostLocation = location);
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e.toString().replaceFirst('Exception: ', ''),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
                 const SizedBox(height: 16),
                 _buildField(_priceCtrl, "Harga per Bulan", Icons.payments, "1500000", isNumber: true),
                 const SizedBox(height: 16),
@@ -419,7 +507,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
             ),
             const SizedBox(width: 10),
             Text(
-              "Logout Akun",
+              "Keluar Dashboard Owner",
               style: GoogleFonts.sora(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -429,7 +517,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ],
         ),
         content: Text(
-          "Yakin ingin keluar dari akun sekarang?",
+          "Anda akan keluar dari panel pengelolaan kost. Semua data tetap tersimpan dan bisa dilanjutkan lagi saat login.",
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14,
             color: const Color(0xFF6B6257),
@@ -471,7 +559,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
               ),
             ),
             child: Text(
-              "Logout",
+              "Keluar Sekarang",
               style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
             ),
           ),
@@ -568,19 +656,82 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 
+  Widget _buildLocationPicker({
+    required KostLocationData? location,
+    required VoidCallback onTap,
+  }) {
+    final hasLocation = location != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F0EA),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFFEADBC9),
+              child: Icon(
+                hasLocation
+                    ? Icons.my_location_rounded
+                    : Icons.location_searching_rounded,
+                color: const Color(0xFF9C5A1A),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Titik Lokasi Kost',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF4A2C0A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasLocation
+                        ? location.coordinateLabel
+                        : "Tap untuk ambil lokasi kost dari GPS perangkat",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: const Color(0xFF6B6257),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF9C5A1A),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInfoRow(IconData icon, String label, String value, {VoidCallback? onEdit}) {
     return Row(
       children: [
         Icon(icon, size: 20, color: const Color(0xFF9C5A1A)),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
-            Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D3328))),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.grey.shade600)),
+              Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF3D3328))),
+            ],
+          ),
         ),
-        const Spacer(),
         if (onEdit != null) IconButton(onPressed: onEdit, icon: const Icon(Icons.edit, size: 16, color: Color(0xFF9C5A1A))),
       ],
     );
@@ -641,7 +792,20 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                     children: [
                       _buildInfoRow(Icons.email_outlined, "Email Pengguna", userEmail),
                       const Divider(height: 20),
-                      _buildInfoRow(Icons.lock_outline, "Password Akun", "••••••••", onEdit: _showChangePasswordDialog),
+                      _buildInfoRow(Icons.lock_outline, "Password Akun", "********", onEdit: _showChangePasswordDialog),
+                      const Divider(height: 20),
+                      _buildInfoRow(
+                        Icons.my_location_rounded,
+                        "Lokasi Kost",
+                        ownerKosts.isEmpty
+                            ? "Belum ada kost"
+                            : (KostLocationService.hasLocation(ownerKosts.first)
+                                  ? KostLocationService.coordinateLabelFromMap(
+                                      ownerKosts.first,
+                                    )
+                                  : "Belum diatur"),
+                        onEdit: _updateKostLocation,
+                      ),
                       const Divider(height: 20),
                       _buildInfoRow(
                         Icons.home_work_outlined,
@@ -703,10 +867,44 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                   label: Text("Pilih / Ubah Foto Kost", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
                 ),
               ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF9C5A1A),
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
+                  ),
+                  onPressed: _updateKostLocation,
+                  icon: const Icon(Icons.my_location_rounded),
+                  label: Text("Setel / Ubah Lokasi Kost", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                ),
+              ),
               const SizedBox(height: 24),
-              TextButton(
-                onPressed: _showLogoutConfirmation,
-                child: Text("Logout Akun", style: GoogleFonts.plusJakartaSans(color: Colors.red, fontWeight: FontWeight.w600)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: OutlinedButton.icon(
+                  onPressed: _showLogoutConfirmation,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE24D56),
+                    side: const BorderSide(color: Color(0xFFF0C7CB)),
+                    backgroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 55),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: Text(
+                    "Keluar",
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFFE24D56),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Aplikasi membutuhkan kamera untuk mengambil foto profil dan foto kost.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi membutuhkan lokasi untuk menetapkan titik lokasi kost agar bisa divalidasi admin dan dilihat pengguna.</string>
 	<key>NSUserNotificationUsageDescription</key>
 	<string>Aplikasi membutuhkan notifikasi untuk pengingat dan pembaruan penting.</string>
 </dict>

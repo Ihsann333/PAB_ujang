@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
 import '../services/supabase_service.dart';
 import 'package:kostly_pa/services/media_service.dart';
 import 'dart:typed_data';
@@ -36,6 +37,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   Uint8List? _kostPhotoBytes;
   String? _ownerPhotoName;
   String? _kostPhotoName;
+  KostLocationData? _kostLocation;
 
   final supabase = SupabaseService.client;
 
@@ -60,7 +62,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   }
 
   Future<void> _pickOwnerPhoto() async {
-    final photo = await MediaService.takePhoto();
+    final photo = await MediaService.pickImage(context);
     if (photo == null) return;
     final bytes = await photo.readAsBytes();
     if (!mounted) return;
@@ -71,7 +73,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   }
 
   Future<void> _pickKostPhoto() async {
-    final photo = await MediaService.takePhoto();
+    final photo = await MediaService.pickImage(context);
     if (photo == null) return;
     final bytes = await photo.readAsBytes();
     if (!mounted) return;
@@ -134,7 +136,9 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       });
 
       // 2. Insert ke tabel Kosts (Termasuk Alamat)
-      await supabase.from('kosts').insert({
+      await KostLocationService.saveKostWithLocation(
+        supabase: supabase,
+        basePayload: {
         'owner_id': user.id,
         'name': namaKosController.text.trim(),
         'address': addressController.text.trim(), // Data alamat masuk ke sini
@@ -147,7 +151,9 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'join_code': generateCode(),
         'is_approved': false,
         'photo_url': kostPhotoUrl,
-      });
+        },
+        location: _kostLocation,
+      );
 
       _showNotice("Registrasi Berhasil! Menunggu persetujuan admin.");
       if (mounted) Navigator.pop(context);
@@ -213,6 +219,8 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                   
                   // INPUT ALAMAT
                   _inputField("Alamat Lengkap Kost", addressController, Icons.location_on, maxLines: 2),
+                  _locationPickerCard(),
+                  const SizedBox(height: 16),
 
                   Row(
                     children: [
@@ -336,6 +344,89 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       child: Text(
         title,
         style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF9C5A1A)),
+      ),
+    );
+  }
+
+  Future<void> _captureKostLocation() async {
+    try {
+      final location = await KostLocationService.getCurrentLocation();
+      if (!mounted) return;
+      setState(() => _kostLocation = location);
+      _showNotice('Lokasi kost berhasil diambil dari perangkat.');
+    } catch (e) {
+      _showNotice(e.toString().replaceFirst('Exception: ', ''), isError: true);
+    }
+  }
+
+  Widget _locationPickerCard() {
+    final hasLocation = _kostLocation != null;
+    return InkWell(
+      onTap: _captureKostLocation,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDF8F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5D8C8)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFFEADBC9),
+              child: Icon(
+                hasLocation
+                    ? Icons.my_location_rounded
+                    : Icons.location_searching_rounded,
+                color: const Color(0xFF9C5A1A),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Titik Lokasi Kost',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF4A2C0A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasLocation
+                        ? _kostLocation!.coordinateLabel
+                        : 'Tap untuk ambil lokasi kost dari GPS perangkat',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    hasLocation
+                        ? 'Lokasi siap ditinjau admin dan ditampilkan ke user.'
+                        : 'Disarankan diambil saat Anda berada di area kost.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: const Color(0xFF9C5A1A),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF9C5A1A),
+            ),
+          ],
+        ),
       ),
     );
   }

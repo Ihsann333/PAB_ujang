@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/pages/user_page/profile_page.dart';
 import 'package:kostly_pa/pages/user_page/reminder_page_user.dart';
 import 'package:kostly_pa/pages/user_page/user_home_page.dart';
 
@@ -16,6 +17,7 @@ class _UserDashboardState extends State<UserDashboard> {
   final List<Widget> _pages = [
     const UserHomePage(),
     const ReminderPageUser(),
+    const UserProfilePage(),
   ];
 
   @override
@@ -43,6 +45,10 @@ class _UserDashboardState extends State<UserDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications_rounded),
             label: 'Reminder',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Profil',
           ),
         ],
       ),
