@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kostly_pa/auth/auth_ui.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -69,6 +70,11 @@ class _LoginPageState extends State<LoginPage> {
           String route = '/user';
           if (profile['role'] == 'admin') route = '/admin';
           if (profile['role'] == 'owner') route = '/owner';
+
+          await AppNotificationService.show(
+            title: 'Login Berhasil 👋',
+            body: 'Selamat datang kembali di Kostly!',
+          );
 
           Navigator.pushReplacementNamed(context, route);
         }

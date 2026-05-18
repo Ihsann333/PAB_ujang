@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:kostly_pa/services/notification_service.dart'; // ✅ TAMBAHAN
 import 'package:kostly_pa/services/supabase_service.dart';
 import 'package:kostly_pa/pages/user_page/user_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ TAMBAHAN
 
 class ReminderPageUser extends StatefulWidget {
   const ReminderPageUser({super.key});
@@ -14,11 +16,63 @@ class ReminderPageUser extends StatefulWidget {
 class _ReminderPageUserState extends State<ReminderPageUser> {
   List reminders = [];
   bool isLoading = true;
+  RealtimeChannel? _reminderChannel; // ✅ TAMBAHAN
 
   @override
   void initState() {
     super.initState();
     fetchReminders();
+    _subscribeReminders(); // ✅ TAMBAHAN
+  }
+
+  // ✅ TAMBAHAN: Realtime listener agar notifikasi muncul otomatis
+  Future<void> _subscribeReminders() async {
+    final supabase = SupabaseService.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    // Ambil kost_id user dulu
+    final profile = await supabase
+        .from('profiles')
+        .select('kost_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    final kostId = profile?['kost_id']?.toString();
+    if (kostId == null) return;
+
+    // Listen realtime ke tabel reminders
+    _reminderChannel = supabase
+        .channel('reminders-user-$kostId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'reminders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'kost_id',
+            value: kostId,
+          ),
+          callback: (payload) async {
+            final newRow = payload.newRecord;
+            final message = newRow['message']?.toString() ?? '';
+            final parsed = SupabaseService.parseReminder(message);
+
+            // Cek apakah reminder ini untuk semua atau khusus user ini
+            final tenantId = parsed?['tenant_id'];
+            if (tenantId != null && tenantId != user.id) return;
+
+            final title = parsed?['title'] ?? 'Pengumuman Kost';
+            final body = parsed?['body'] ?? message;
+
+            // Tampilkan notifikasi lokal ke penghuni
+            await AppNotificationService.show(title: title, body: body);
+
+            // Refresh list reminder
+            fetchReminders();
+          },
+        )
+        .subscribe();
   }
 
   // ✅ Ambil dari service (sinkron dengan Home)
@@ -121,6 +175,12 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
     if (dayDiff <= 0) return DateFormat('HH:mm').format(local);
     if (dayDiff == 1) return 'Kemarin';
     return DateFormat('dd/MM/yy').format(local);
+  }
+
+  @override
+  void dispose() {
+    _reminderChannel?.unsubscribe(); // ✅ TAMBAHAN
+    super.dispose();
   }
 
   @override

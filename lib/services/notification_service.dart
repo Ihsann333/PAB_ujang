@@ -11,10 +11,22 @@ class AppNotificationService {
     if (_initialized) return;
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     const settings = InitializationSettings(android: android, iOS: ios);
 
     await _plugin.initialize(settings);
+
+    // ✅ Minta izin notifikasi (wajib Android 13+ / API 33+)
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+
     _initialized = true;
   }
 
@@ -30,8 +42,10 @@ class AppNotificationService {
       'kostly_notifications',
       'Kostly Notifications',
       channelDescription: 'Notifikasi aplikasi Kostly',
-      importance: Importance.high,
-      priority: Priority.high,
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
     );
     const iosDetails = DarwinNotificationDetails();
 
