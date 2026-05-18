@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/admin_page/detail_kos.dart';
 import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 TextStyle _soraAdmin({double? fontSize, FontWeight? fontWeight, Color? color}) {
-  return GoogleFonts.sora(
-    fontSize: fontSize,
-    fontWeight: fontWeight,
-    color: color,
-  );
+  return adminSora(fontSize: fontSize, fontWeight: fontWeight, color: color);
 }
 
 TextStyle _jakartaAdmin({
@@ -17,11 +13,7 @@ TextStyle _jakartaAdmin({
   FontWeight? fontWeight,
   Color? color,
 }) {
-  return GoogleFonts.plusJakartaSans(
-    fontSize: fontSize,
-    fontWeight: fontWeight,
-    color: color,
-  );
+  return adminJakarta(fontSize: fontSize, fontWeight: fontWeight, color: color);
 }
 
 class MonitorPage extends StatefulWidget {
@@ -185,7 +177,7 @@ class _MonitorPageState extends State<MonitorPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // 🔥 konsisten
+      backgroundColor: AdminPalette.background,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: fetchStats,
@@ -478,7 +470,7 @@ class ListDataPage extends StatelessWidget {
     final supabase = SupabaseService.client;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // 🔥 FIX
+      backgroundColor: AdminPalette.background,
       appBar: AppBar(
         title: Text(title, style: _soraAdmin(fontWeight: FontWeight.w700)),
         backgroundColor: Colors.transparent,
@@ -518,7 +510,7 @@ class ListDataPage extends StatelessWidget {
                     vertical: 10,
                   ),
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFF2E8DA),
+                    backgroundColor: AdminPalette.background,
                     child: Icon(
                       table == 'kosts' ? Icons.home_work : Icons.person,
                       color: const Color(0xFF9C5A1A),
@@ -581,7 +573,7 @@ class OwnerDetailPage extends StatelessWidget {
     final supabase = SupabaseService.client;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // 🔥 FIX
+      backgroundColor: AdminPalette.background,
       appBar: AppBar(
         title: Text(
           "Profil Owner",

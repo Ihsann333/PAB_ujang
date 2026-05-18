@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; 
-import 'package:google_fonts/google_fonts.dart';
-import 'package:kostly_pa/services/kost_location_service.dart';
-import '../services/supabase_service.dart';
-import 'package:kostly_pa/services/media_service.dart';
-import 'dart:typed_data';
 import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/auth/auth_ui.dart';
+import 'package:kostly_pa/services/kost_location_service.dart';
+import 'package:kostly_pa/services/media_service.dart';
+import 'package:kostly_pa/services/supabase_service.dart';
 
 class RegisterOwnerPage extends StatefulWidget {
   const RegisterOwnerPage({super.key});
@@ -16,15 +18,13 @@ class RegisterOwnerPage extends StatefulWidget {
 
 class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Controllers
+
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  
   final namaKosController = TextEditingController();
-  final addressController = TextEditingController(); // Controller Alamat Baru
+  final addressController = TextEditingController();
   final hargaController = TextEditingController();
   final rulesController = TextEditingController();
   final slotController = TextEditingController();
@@ -33,6 +33,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   bool air = false;
   bool wifi = false;
   bool isLoading = false;
+  bool _obscurePassword = true;
   Uint8List? _ownerPhotoBytes;
   Uint8List? _kostPhotoBytes;
   String? _ownerPhotoName;
@@ -43,7 +44,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
 
   String generateCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    Random rnd = Random();
+    final rnd = Random();
     return String.fromCharCodes(
       Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
     );
@@ -53,10 +54,10 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : const Color(0xFF9C5A1A),
+        backgroundColor: isError ? Colors.redAccent : AuthPalette.primary,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -89,12 +90,22 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
     required String fileName,
   }) async {
     if (bytes == null) return null;
-    return MediaService.uploadImageBytes(
-      bytes: bytes,
-      bucket: 'kostly-media',
-      folder: folder,
-      fileName: fileName,
-    );
+    try {
+      return await MediaService.uploadImageBytes(
+        bytes: bytes,
+        bucket: 'kostly-media',
+        folder: folder,
+        fileName: fileName,
+      );
+    } catch (e) {
+      if (mounted) {
+        final message = e.toString().contains('Bucket not found')
+            ? 'Foto belum tersimpan karena storage media belum tersedia. Registrasi tetap dilanjutkan tanpa foto.'
+            : 'Upload foto gagal, tapi registrasi tetap dilanjutkan tanpa foto.';
+        _showNotice(message);
+      }
+      return null;
+    }
   }
 
   Future<void> registerOwner() async {
@@ -120,11 +131,10 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
       final kostPhotoUrl = await _uploadPhoto(
         bytes: _kostPhotoBytes,
         folder: 'kosts/${user.id}',
-        fileName: _kostPhotoName ??
-            'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        fileName:
+            _kostPhotoName ?? 'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
 
-      // 1. Insert ke tabel Profiles
       await supabase.from('profiles').insert({
         'id': user.id,
         'full_name': nameController.text.trim(),
@@ -135,29 +145,27 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'profile_photo_url': ownerPhotoUrl,
       });
 
-      // 2. Insert ke tabel Kosts (Termasuk Alamat)
       await KostLocationService.saveKostWithLocation(
         supabase: supabase,
         basePayload: {
-        'owner_id': user.id,
-        'name': namaKosController.text.trim(),
-        'address': addressController.text.trim(), // Data alamat masuk ke sini
-        'price': int.tryParse(hargaController.text.trim()) ?? 0,
-        'include_electricity': listrik,
-        'include_water': air,
-        'include_wifi': wifi,
-        'rules': rulesController.text.trim(),
-        'slots': int.tryParse(slotController.text.trim()) ?? 0,
-        'join_code': generateCode(),
-        'is_approved': false,
-        'photo_url': kostPhotoUrl,
+          'owner_id': user.id,
+          'name': namaKosController.text.trim(),
+          'address': addressController.text.trim(),
+          'price': int.tryParse(hargaController.text.trim()) ?? 0,
+          'include_electricity': listrik,
+          'include_water': air,
+          'include_wifi': wifi,
+          'rules': rulesController.text.trim(),
+          'slots': int.tryParse(slotController.text.trim()) ?? 0,
+          'join_code': generateCode(),
+          'is_approved': false,
+          'photo_url': kostPhotoUrl,
         },
         location: _kostLocation,
       );
 
       _showNotice("Registrasi Berhasil! Menunggu persetujuan admin.");
       if (mounted) Navigator.pop(context);
-
     } catch (e) {
       _showNotice(e.toString(), isError: true);
     } finally {
@@ -167,184 +175,216 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      appBar: AppBar(
-        title: Text(
-          "Daftar Owner",
-          style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: const Color(0xFF4A2C0A),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+    return AuthScreenShell(
+      title: "Sign Up",
+      subtitle: "Daftarkan akun owner dan unit kost Anda",
+      backLabel: "Kembali ke login",
+      onBack: () => Navigator.pop(context),
+      maxWidth: 520,
+      headerHeight: 240,
+      cardOverlap: 18,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Daftar Owner",
+              style: GoogleFonts.sora(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: AuthPalette.primaryDark,
+              ),
             ),
-            child: Form(
-              key: _formKey,
+            const SizedBox(height: 8),
+            Text(
+              "Lengkapi data akun dan informasi kost agar bisa direview admin.",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AuthPalette.muted,
+              ),
+            ),
+            const SizedBox(height: 20),
+            AuthSectionCard(
+              title: "Informasi Akun",
+              subtitle: "Data pemilik yang dipakai untuk akses dan verifikasi.",
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                _sectionTitle("Informasi Akun"),
-                  _imagePickerTile(
-                    label: "Foto Profil Owner",
-                    bytes: _ownerPhotoBytes,
+                  AuthImagePickerPreview(
+                    title: "Foto Profil Owner",
+                    subtitle: _ownerPhotoBytes == null
+                        ? "Tambahkan foto profil owner"
+                        : "Foto profil owner sudah dipilih",
                     onTap: _pickOwnerPhoto,
+                    imageProvider: _ownerPhotoBytes != null
+                        ? MemoryImage(_ownerPhotoBytes!)
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                  _inputField("Nama Pengguna", nameController, Icons.person, isName: true),
-                  _inputField("Nomor Pengguna (08...)", phoneController, Icons.phone, isPhone: true),
-                  _inputField("Email", emailController, Icons.email, isEmail: true),
-                  _inputField("Password", passwordController, Icons.lock, isPassword: true),
-                  
-                  const Divider(height: 40),
-                  
-                  _sectionTitle("Detail Kost"),
-                  _imagePickerTile(
-                    label: "Foto Kost",
-                    bytes: _kostPhotoBytes,
+                  _inputField(
+                    "Nama Pengguna",
+                    nameController,
+                    Icons.person_outline_rounded,
+                    isName: true,
+                  ),
+                  _inputField(
+                    "Nomor Pengguna (08...)",
+                    phoneController,
+                    Icons.phone_outlined,
+                    isPhone: true,
+                  ),
+                  _inputField(
+                    "Email",
+                    emailController,
+                    Icons.email_outlined,
+                    isEmail: true,
+                  ),
+                  _inputField(
+                    "Password",
+                    passwordController,
+                    Icons.lock_outline_rounded,
+                    isPassword: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AuthSectionCard(
+              title: "Detail Kost",
+              subtitle: "Informasi ini akan ditinjau admin sebelum aktif.",
+              child: Column(
+                children: [
+                  AuthImagePickerPreview(
+                    title: "Foto Kost",
+                    subtitle: _kostPhotoBytes == null
+                        ? "Tambahkan foto utama kost"
+                        : "Foto kost sudah dipilih",
                     onTap: _pickKostPhoto,
+                    imageProvider: _kostPhotoBytes != null
+                        ? MemoryImage(_kostPhotoBytes!)
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                  _inputField("Nama Kost", namaKosController, Icons.home_work),
-                  
-                  // INPUT ALAMAT
-                  _inputField("Alamat Lengkap Kost", addressController, Icons.location_on, maxLines: 2),
+                  _inputField(
+                    "Nama Kost",
+                    namaKosController,
+                    Icons.home_work_outlined,
+                  ),
+                  _inputField(
+                    "Alamat Lengkap Kost",
+                    addressController,
+                    Icons.location_on_outlined,
+                    maxLines: 2,
+                  ),
                   _locationPickerCard(),
                   const SizedBox(height: 16),
-
                   Row(
                     children: [
-                      Expanded(child: _inputField("Harga (Rp)", hargaController, Icons.money, isNumber: true)),
+                      Expanded(
+                        child: _inputField(
+                          "Harga (Rp)",
+                          hargaController,
+                          Icons.payments_outlined,
+                          isNumber: true,
+                        ),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _inputField("Jumlah Kamar", slotController, Icons.meeting_room, isNumber: true)),
+                      Expanded(
+                        child: _inputField(
+                          "Jumlah Kamar",
+                          slotController,
+                          Icons.meeting_room_outlined,
+                          isNumber: true,
+                        ),
+                      ),
                     ],
                   ),
-                  _inputField("Peraturan Kost", rulesController, Icons.rule, maxLines: 3),
-
+                  _inputField(
+                    "Peraturan Kost",
+                    rulesController,
+                    Icons.rule_folder_outlined,
+                    maxLines: 3,
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Fasilitas Tambahan",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AuthPalette.primaryDark,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  Text(
-                    "Fasilitas Tambahan:",
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                  
                   Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
                     children: [
-                      _buildCheckbox("Listrik Include", listrik, (v) => setState(() => listrik = v!)),
-                      _buildCheckbox("Air Include", air, (v) => setState(() => air = v!)),
-                      _buildCheckbox("WiFi Include", wifi, (v) => setState(() => wifi = v!)),
+                      _buildFacilityChip(
+                        "Listrik Include",
+                        listrik,
+                        (v) => setState(() => listrik = v),
+                      ),
+                      _buildFacilityChip(
+                        "Air Include",
+                        air,
+                        (v) => setState(() => air = v),
+                      ),
+                      _buildFacilityChip(
+                        "WiFi Include",
+                        wifi,
+                        (v) => setState(() => wifi = v),
+                      ),
                     ],
                   ),
-
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: isLoading ? null : registerOwner,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9C5A1A),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 55),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: isLoading
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text("Daftar Sekarang", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-                  ),
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCheckbox(String title, bool value, Function(bool?) onChanged) {
-    return SizedBox(
-      width: 180,
-      child: CheckboxListTile(
-        title: Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w500)),
-        value: value,
-        onChanged: onChanged,
-        activeColor: const Color(0xFF9C5A1A),
-        contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
-        dense: true,
-      ),
-    );
-  }
-
-  Widget _imagePickerTile({
-    required String label,
-    required Uint8List? bytes,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFDF8F2),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5D8C8)),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: const Color(0xFFEADBC9),
-              backgroundImage: bytes != null ? MemoryImage(bytes) : null,
-              child: bytes == null
-                  ? const Icon(Icons.camera_alt_rounded, color: Color(0xFF9C5A1A))
-                  : null,
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: isLoading ? null : registerOwner,
+              style: authPrimaryButtonStyle(),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text("Daftar"),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF4A2C0A),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    bytes == null ? "Tap untuk pilih foto" : "Foto sudah dipilih",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF9C5A1A)),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
+  Widget _buildFacilityChip(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return FilterChip(
+      label: Text(
         title,
-        style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF9C5A1A)),
+        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
       ),
+      selected: value,
+      onSelected: onChanged,
+      selectedColor: const Color(0xFFF3E3CF),
+      checkmarkColor: AuthPalette.primary,
+      labelStyle: GoogleFonts.plusJakartaSans(
+        color: value ? AuthPalette.primary : AuthPalette.primaryDark,
+      ),
+      side: BorderSide(
+        color: value ? AuthPalette.primary : AuthPalette.border,
+      ),
+      backgroundColor: AuthPalette.inputFill,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     );
   }
 
@@ -363,26 +403,26 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
     final hasLocation = _kostLocation != null;
     return InkWell(
       onTap: _captureKostLocation,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFDF8F2),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5D8C8)),
+          color: AuthPalette.inputFill,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AuthPalette.border),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: const Color(0xFFEADBC9),
+              backgroundColor: const Color(0xFFF0DAC0),
               child: Icon(
                 hasLocation
                     ? Icons.my_location_rounded
                     : Icons.location_searching_rounded,
-                color: const Color(0xFF9C5A1A),
+                color: AuthPalette.primary,
               ),
             ),
             const SizedBox(width: 12),
@@ -394,7 +434,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                     'Titik Lokasi Kost',
                     style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF4A2C0A),
+                      color: AuthPalette.primaryDark,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -404,7 +444,7 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                         : 'Tap untuk ambil lokasi kost dari GPS perangkat',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: AuthPalette.muted,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -414,53 +454,78 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
                         : 'Disarankan diambil saat Anda berada di area kost.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      color: const Color(0xFF9C5A1A),
-                      fontWeight: FontWeight.w600,
+                      color: AuthPalette.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF9C5A1A),
-            ),
+            const Icon(Icons.chevron_right_rounded, color: AuthPalette.primary),
           ],
         ),
       ),
     );
   }
 
-  Widget _inputField(String label, TextEditingController controller, IconData icon, 
-      {bool isPassword = false, bool isEmail = false, bool isNumber = false, bool isPhone = false, bool isName = false, int maxLines = 1}) {
+  Widget _inputField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    bool isPassword = false,
+    bool isEmail = false,
+    bool isNumber = false,
+    bool isPhone = false,
+    bool isName = false,
+    int maxLines = 1,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPassword ? _obscurePassword : false,
         maxLines: maxLines,
-        style: GoogleFonts.plusJakartaSans(fontSize: 15, color: const Color(0xFF4A2C0A)),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          color: AuthPalette.primaryDark,
+        ),
         inputFormatters: [
-          if (isName) FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')), 
-          if (isPhone || isNumber) FilteringTextInputFormatter.digitsOnly, 
-          if (isPassword || isEmail) FilteringTextInputFormatter.deny(RegExp(r'\s')), 
+          if (isName) FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+          if (isPhone || isNumber) FilteringTextInputFormatter.digitsOnly,
+          if (isPassword || isEmail)
+            FilteringTextInputFormatter.deny(RegExp(r'\s')),
         ],
         keyboardType: isNumber
             ? TextInputType.number
-            : (isPhone ? TextInputType.phone : (isEmail ? TextInputType.emailAddress : TextInputType.text)),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF6A5C4F), fontSize: 13, fontWeight: FontWeight.w500),
-          prefixIcon: Icon(icon, size: 20, color: const Color(0xFF9C5A1A)),
-          filled: true,
-          fillColor: const Color(0xFFFDF8F2),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            : (isPhone
+                ? TextInputType.phone
+                : (isEmail ? TextInputType.emailAddress : TextInputType.text)),
+        decoration: authInputDecoration(
+          hint: label,
+          icon: icon,
+          suffixIcon: isPassword
+              ? IconButton(
+                  onPressed: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: AuthPalette.muted,
+                    size: 20,
+                  ),
+                )
+              : null,
         ),
         validator: (value) {
           if (value == null || value.trim().isEmpty) return "$label wajib diisi";
           if (isName && value.length < 3) return "Nama minimal 3 karakter";
-          if (isEmail && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return "Format email tidak sesuai";
-          if (isPassword && value.length < 6) return "Password minimal 6 karakter";
+          if (isEmail &&
+              !RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+            return "Format email tidak sesuai";
+          }
+          if (isPassword && value.length < 6) {
+            return "Password minimal 6 karakter";
+          }
           if (isNumber) {
             final n = int.tryParse(value);
             if (n == null) return "Harus berupa angka";

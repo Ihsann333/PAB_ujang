@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'admin_ui.dart';
 import 'monitor_page.dart';
 import 'approval_page.dart';
 
@@ -11,9 +12,9 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  int selectedIndex = 0;
+  int _selectedIndex = 0;
 
-  final List<Widget> pages = [
+  final List<Widget> _pages = [
     const MonitorPage(),
     const ApprovalPage(),
   ];
@@ -21,19 +22,47 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      body: pages[selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        selectedItemColor: const Color(0xFF9C5A1A),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
-        onTap: (i) => setState(() => selectedIndex = i),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: "Monitor"),
-          BottomNavigationBarItem(icon: Icon(Icons.how_to_reg_outlined), label: "Approval"),
-        ],
+      backgroundColor: AdminPalette.background,
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.white,
+            currentIndex: _selectedIndex,
+            selectedItemColor: AdminPalette.primary,
+            unselectedItemColor: Colors.grey,
+            elevation: 0,
+            selectedLabelStyle: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+            ),
+            unselectedLabelStyle: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w500,
+            ),
+            onTap: (index) => setState(() => _selectedIndex = index),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.analytics_outlined),
+                label: "Monitor",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.how_to_reg_outlined),
+                label: "Approval",
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:kostly_pa/pages/owner_page/owner_ui.dart';
 
 class ReminderPage extends StatefulWidget {
   const ReminderPage({super.key});
@@ -884,63 +885,60 @@ class _ReminderPageState extends State<ReminderPage> {
     return result;
   }
 
+  InputDecoration _ownerInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: GoogleFonts.plusJakartaSans(
+        fontWeight: FontWeight.w500,
+        color: OwnerPalette.muted,
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF8F0E4),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
   Widget _buildPaymentNotificationSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Pembayaran Terlambat",
-                style: GoogleFonts.sora(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2D241A),
-                ),
-              ),
-            ),
-            if (paymentNotifications.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFE7C8),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  "${paymentNotifications.length} tenant",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF9C5A1A),
+        OwnerSectionHeader(
+          title: "Pembayaran Terlambat",
+          subtitle: "Pantau penghuni yang belum menyelesaikan tagihan bulan ini.",
+          trailing: paymentNotifications.isNotEmpty
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
-                ),
-              ),
-          ],
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE7C8),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    "${paymentNotifications.length} tenant",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      color: OwnerPalette.primary,
+                    ),
+                  ),
+                )
+              : null,
         ),
         const SizedBox(height: 10),
         if (isLoadingPayments)
           const Center(
-            child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+            child: CircularProgressIndicator(color: OwnerPalette.primary),
           )
         else if (paymentNotifications.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFCF7),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFEADBC9)),
-            ),
-            child: Text(
-              "Tidak ada tagihan yang terlambat saat ini",
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF6B6257),
-                height: 1.45,
-              ),
-            ),
+          const OwnerEmptyStateCard(
+            icon: Icons.task_alt_rounded,
+            title: "Semua Pembayaran Aman",
+            subtitle:
+                "Tidak ada tagihan terlambat yang perlu ditindaklanjuti saat ini.",
           )
         else
           ...paymentNotifications.map(
@@ -1093,77 +1091,234 @@ class _ReminderPageState extends State<ReminderPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshPage,
-          color: const Color(0xFF9C5A1A),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
+  Widget _buildStyledPaymentNotificationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OwnerSectionHeader(
+          title: "Pembayaran Terlambat",
+          subtitle: "Pantau penghuni yang belum menyelesaikan tagihan bulan ini.",
+          trailing: paymentNotifications.isEmpty
+              ? null
+              : Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE7C8),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    "${paymentNotifications.length} tenant",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      color: OwnerPalette.primary,
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 10),
+        if (isLoadingPayments)
+          const Center(
+            child: CircularProgressIndicator(color: OwnerPalette.primary),
+          )
+        else if (paymentNotifications.isEmpty)
+          const OwnerEmptyStateCard(
+            icon: Icons.task_alt_rounded,
+            title: "Semua Pembayaran Aman",
+            subtitle:
+                "Tidak ada tagihan terlambat yang perlu ditindaklanjuti saat ini.",
+          )
+        else
+          ...paymentNotifications.map(
+            (rawPayment) => _buildStyledPaymentNotificationCard(
+              Map<String, dynamic>.from(rawPayment as Map),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStyledPaymentNotificationCard(Map<String, dynamic> payment) {
+    return OwnerSurfaceCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Kirim Reminder",
-                style: GoogleFonts.sora(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2D241A),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE7C8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: OwnerPalette.primary,
                 ),
               ),
-              const SizedBox(height: 18),
-              _buildPaymentNotificationSection(),
-              const SizedBox(height: 28),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFCF7),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFEADBC9)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF5A3A17).withOpacity(0.07),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      payment['tenant_name']?.toString() ?? 'Penghuni',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        color: OwnerPalette.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${payment['kost_name']} • ${_paymentPeriodLabel(payment)}",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: OwnerPalette.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _latePaymentDescription(payment),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: const Color(0xFF5A5043),
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _latePaymentAgeLabel(payment),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: OwnerPalette.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F0E4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.event_busy_rounded,
+                  color: OwnerPalette.primary,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Jatuh tempo",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: OwnerPalette.muted,
+                    ),
+                  ),
+                ),
+                Text(
+                  _latePaymentDueLabel(payment),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    color: OwnerPalette.primaryDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: activeLateReminderTenantId != null
+                  ? null
+                  : () => _sendLatePaymentReminder(payment),
+              icon: const Icon(Icons.notifications_active_rounded, size: 18),
+              label: Text(
+                activeLateReminderTenantId == payment['tenant_id']?.toString()
+                    ? "Mengirim..."
+                    : "Kirim Notifikasi",
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: OwnerPalette.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: OwnerPalette.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshPage,
+          color: OwnerPalette.primary,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: [
+              OwnerPageHeader(
+                title: "Kirim Reminder",
+                subtitle:
+                    "Susun pengingat untuk penghuni dan pantau tagihan yang belum selesai.",
+                trailing: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_active_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _buildStyledPaymentNotificationSection(),
+              const SizedBox(height: 20),
+              const OwnerSectionHeader(
+                title: "Buat Reminder",
+                subtitle: "Kirim pengingat manual ke penghuni kost pilihanmu.",
+              ),
+              const SizedBox(height: 14),
+              OwnerSurfaceCard(
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   children: [
                     TextField(
                       controller: _titleCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Judul Reminder",
-                        labelStyle: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF6F6256),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF8F0E4),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
+                      decoration: _ownerInputDecoration("Judul Reminder"),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _msgCtrl,
                       maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: "Isi Pesan",
-                        labelStyle: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF6F6256),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF8F0E4),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
+                      decoration: _ownerInputDecoration("Isi Pesan"),
                     ),
                     const SizedBox(height: 12),
                     Container(
@@ -1181,7 +1336,9 @@ class _ReminderPageState extends State<ReminderPage> {
                           isExpanded: true,
                           hint: Text(
                             "Pilih Kost Tujuan",
-                            style: GoogleFonts.plusJakartaSans(),
+                            style: GoogleFonts.plusJakartaSans(
+                              color: OwnerPalette.muted,
+                            ),
                           ),
                           items: myKosts.map((k) {
                             bool isApproved = k is Map &&
@@ -1197,7 +1354,7 @@ class _ReminderPageState extends State<ReminderPage> {
                                       k['name']?.toString() ?? 'Kost',
                                       style: GoogleFonts.plusJakartaSans(
                                         color: isApproved
-                                            ? const Color(0xFF2D241A)
+                                            ? OwnerPalette.primaryDark
                                             : Colors.grey,
                                       ),
                                     ),
@@ -1221,7 +1378,7 @@ class _ReminderPageState extends State<ReminderPage> {
                     const SizedBox(height: 14),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF9C5A1A),
+                        backgroundColor: OwnerPalette.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(
@@ -1241,26 +1398,22 @@ class _ReminderPageState extends State<ReminderPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
-              Text(
-                "Reminder Tersimpan",
-                style: GoogleFonts.sora(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2D241A),
-                ),
+              const SizedBox(height: 20),
+              const OwnerSectionHeader(
+                title: "Reminder Tersimpan",
+                subtitle: "Riwayat reminder yang sudah pernah dikirim.",
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               if (isLoadingReminders)
                 const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF9C5A1A)),
+                  child: CircularProgressIndicator(color: OwnerPalette.primary),
                 )
               else if (reminders.isEmpty)
-                Center(
-                  child: Text(
-                    "Belum ada reminder",
-                    style: GoogleFonts.plusJakartaSans(),
-                  ),
+                const OwnerEmptyStateCard(
+                  icon: Icons.inbox_rounded,
+                  title: "Belum Ada Reminder",
+                  subtitle:
+                      "Reminder yang dikirim ke penghuni akan muncul di sini.",
                 )
               else
                 ...reminders.map(

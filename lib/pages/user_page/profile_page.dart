@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/pages/user_page/user_ui.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
@@ -354,8 +355,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFFDF7F0),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEADBC9)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: UserPalette.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,42 +464,42 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
+      backgroundColor: UserPalette.background,
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(color: UserPalette.primary),
+              )
             : RefreshIndicator(
                 onRefresh: _fetchData,
-                color: const Color(0xFF9C5A1A),
+                color: UserPalette.primary,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Profil Saya',
-                        style: GoogleFonts.sora(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF2D241A),
+                      UserPageHeader(
+                        title: 'Profil Saya',
+                        subtitle:
+                            'Kelola data akun, foto profil, dan detail kost yang sedang ditempati.',
+                        trailing: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 18),
-                      Container(
-                        width: double.infinity,
+                      UserSurfaceCard(
                         padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
                         child: Column(
                           children: [
                             CircleAvatar(
@@ -562,6 +563,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 20),
+                      const UserSectionHeader(
+                        title: 'Informasi Akun',
+                        subtitle: 'Detail dasar akun penghuni.',
+                      ),
+                      const SizedBox(height: 14),
                       _buildProfileField(
                         'Nama Pengguna',
                         _resolveProfileValue('full_name'),
@@ -576,13 +582,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             _resolveProfileValue('email'),
                       ),
                       _buildProfileField(
-                        'Peran Akun',
-                        _resolveUserRoleLabel(),
-                      ),
-                      _buildProfileField(
                         'Status Akun',
                         _resolveApprovalLabel(),
                       ),
+                      const SizedBox(height: 8),
+                      const UserSectionHeader(
+                        title: 'Informasi Kost',
+                        subtitle:
+                            'Data kost yang saat ini terhubung ke akunmu.',
+                      ),
+                      const SizedBox(height: 14),
                       _buildProfileField(
                         'Kost Ditempati',
                         kostData?['name']?.toString() ?? '-',
@@ -608,10 +617,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       _buildProfileField(
                         'Tanggal Masuk Kost',
                         _resolveJoinDate(),
-                      ),
-                      _buildProfileField(
-                        'ID Pengguna',
-                        supabase.auth.currentUser?.id ?? '-',
                       ),
                       _buildProfileField(
                         'Password',

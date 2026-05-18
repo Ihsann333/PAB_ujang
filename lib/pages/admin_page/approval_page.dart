@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
@@ -9,11 +9,7 @@ TextStyle _soraApproval({
   FontWeight? fontWeight,
   Color? color,
 }) {
-  return GoogleFonts.sora(
-    fontSize: fontSize,
-    fontWeight: fontWeight,
-    color: color,
-  );
+  return adminSora(fontSize: fontSize, fontWeight: fontWeight, color: color);
 }
 
 TextStyle _jakartaApproval({
@@ -22,7 +18,7 @@ TextStyle _jakartaApproval({
   Color? color,
   TextDecoration? decoration,
 }) {
-  return GoogleFonts.plusJakartaSans(
+  return adminJakarta(
     fontSize: fontSize,
     fontWeight: fontWeight,
     color: color,
@@ -316,7 +312,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF7F0),
+      backgroundColor: AdminPalette.background,
       appBar: AppBar(
         title: Text(
           "Approval Panel",

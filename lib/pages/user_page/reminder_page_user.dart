@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
+import 'package:kostly_pa/pages/user_page/user_ui.dart';
 
 class ReminderPageUser extends StatefulWidget {
   const ReminderPageUser({super.key});
@@ -125,80 +126,110 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      appBar: AppBar(
-        title: Text(
-          "Notifikasi",
-          style: GoogleFonts.sora(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : reminders.isEmpty
-          ? Center(
-              child: Text(
-                "Belum ada pengumuman",
-                style: GoogleFonts.plusJakartaSans(color: Colors.grey[700]),
+      backgroundColor: UserPalette.background,
+      body: SafeArea(
+        child: isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: UserPalette.primary),
+              )
+            : RefreshIndicator(
+                onRefresh: fetchReminders,
+                color: UserPalette.primary,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  children: [
+                    const UserPageHeader(
+                      title: 'Notifikasi',
+                      subtitle:
+                          'Lihat pengumuman dan pengingat terbaru dari kost Anda.',
+                    ),
+                    const SizedBox(height: 22),
+                    const UserSectionHeader(
+                      title: 'Semua Pengumuman',
+                      subtitle: 'Daftar notifikasi yang relevan untuk akunmu.',
+                    ),
+                    const SizedBox(height: 14),
+                    if (reminders.isEmpty)
+                      const UserEmptyStateCard(
+                        icon: Icons.notifications_off_rounded,
+                        title: 'Belum Ada Pengumuman',
+                        subtitle:
+                            'Nanti notifikasi dari owner atau sistem akan muncul di sini.',
+                      )
+                    else
+                      ...reminders.map((r) => _buildReminderCard(r)),
+                  ],
+                ),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: reminders.length,
-              itemBuilder: (context, index) {
-                final r = reminders[index];
+      ),
+    );
+  }
 
-                return Card(
-                  color: const Color(0xFFFFFBF7),
-                  elevation: 0,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFFE8DCCB)),
-                  ),
-                  child: ListTile(
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _reminderTitle(r),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF2D241A),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatReminderTime(r),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF7A6A58),
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _reminderText(r),
-                          style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF5F5549),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+  Widget _buildReminderCard(Map r) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: UserSurfaceCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: UserPalette.softAccent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.notifications_active_rounded,
+                color: UserPalette.primary,
+                size: 20,
+              ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _reminderTitle(r),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: UserPalette.primaryDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatReminderTime(r),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: UserPalette.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _reminderText(r),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: const Color(0xFF5F5549),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

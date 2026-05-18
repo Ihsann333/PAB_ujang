@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/auth/auth_ui.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -24,7 +25,6 @@ class _LoginPageState extends State<LoginPage> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    // 🔥 VALIDASI MANUAL (ANTI TEMBUS)
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar("Semua field wajib diisi", isError: true);
       return;
@@ -40,7 +40,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // ✅ OPTIONAL: tetap pakai form validation
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
@@ -74,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacementNamed(context, route);
         }
       }
-    } catch (e) {
+    } catch (_) {
       _showSnackBar("Email atau Password salah", isError: true);
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -85,198 +84,162 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : const Color(0xFF9C5A1A),
+        backgroundColor: isError ? Colors.redAccent : AuthPalette.primary,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA), // Background Cream
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/images/login_logo_kostly.jpeg',
-                  width: 130,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  "KOSTLY",
-                  style: GoogleFonts.sora(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF4A2C0A),
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                Text(
-                  "Lupa bayar kost? Kostly aja",
-                  style: GoogleFonts.plusJakartaSans(
-                    color: Colors.brown,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 35),
-
-                // Card Form
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildTextField(
-                          controller: emailController,
-                          hint: "Email",
-                          icon: Icons.email_outlined,
-                          isEmail: true,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: passwordController,
-                          hint: "Password",
-                          icon: Icons.lock_outline,
-                          isPassword: true,
-                        ),
-                        const SizedBox(height: 24),
-
-                        ElevatedButton(
-                          onPressed: isLoading ? null : login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF9C5A1A),
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  "MASUK",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // REGISTER SECTION (Ini yang tadi kureng)
-                Text(
-                  "Belum punya akun? Register sebagai",
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF4A2C0A),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    // Tombol Daftar Penghuni
-                    Expanded(
-                      child: _buildRegisterButton(
-                        label: "Penghuni",
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/register-user'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Tombol Daftar Owner
-                    Expanded(
-                      child: _buildRegisterButton(
-                        label: "Owner",
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/register-owner'),
-                        isPrimary: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return AuthScreenShell(
+      title: "Hello!",
+      subtitle: "Selamat datang kembali di Kostly",
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Login",
+              style: GoogleFonts.sora(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: AuthPalette.primaryDark,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              "Masuk untuk lanjut kelola kost dan tagihanmu.",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AuthPalette.muted,
+              ),
+            ),
+            const SizedBox(height: 24),
+            AuthSectionCard(
+              title: "Masuk ke Akun",
+              subtitle: "Gunakan email dan password yang sudah terdaftar.",
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: emailController,
+                    hint: "Email",
+                    icon: Icons.email_outlined,
+                    isEmail: true,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    controller: passwordController,
+                    hint: "Password",
+                    icon: Icons.lock_outline_rounded,
+                    isPassword: true,
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      "Lupa password? Hubungi admin.",
+                      style: GoogleFonts.plusJakartaSans(
+                        color: AuthPalette.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            ElevatedButton(
+              onPressed: isLoading ? null : login,
+              style: authPrimaryButtonStyle(),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text("Masuk"),
+            ),
+            const SizedBox(height: 24),
+            AuthSectionCard(
+              title: "Buat Akun Baru",
+              subtitle: "Pilih jenis akun yang ingin Anda daftarkan.",
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildRegisterButton(
+                      label: "Penghuni",
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/register-user'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildRegisterButton(
+                      label: "Owner",
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/register-owner'),
+                      isPrimary: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                "Belum punya akun? Pilih tipe registrasi di atas.",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: AuthPalette.muted,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Helper Button Register biar rapi
   Widget _buildRegisterButton({
     required String label,
     required VoidCallback onPressed,
     bool isPrimary = false,
   }) {
-    return isPrimary
-        ? ElevatedButton(
-            onPressed: onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF9C5A1A),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              elevation: 0,
+    final style = isPrimary
+        ? ElevatedButton.styleFrom(
+            backgroundColor: AuthPalette.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
           )
-        : OutlinedButton(
-            onPressed: onPressed,
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF9C5A1A)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        : OutlinedButton.styleFrom(
+            foregroundColor: AuthPalette.primary,
+            side: const BorderSide(color: AuthPalette.primary),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF9C5A1A),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
           );
+
+    final child = Text(
+      label,
+      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+    );
+
+    return isPrimary
+        ? ElevatedButton(onPressed: onPressed, style: style, child: child)
+        : OutlinedButton(onPressed: onPressed, style: style, child: child);
   }
 
   Widget _buildTextField({
@@ -290,37 +253,23 @@ class _LoginPageState extends State<LoginPage> {
       controller: controller,
       obscureText: isPassword ? _isObscure : false,
       style: GoogleFonts.plusJakartaSans(
-        color: const Color(0xFF4A2C0A),
-        fontSize: 15,
-        fontWeight: FontWeight.w400,
+        color: AuthPalette.primaryDark,
+        fontSize: 14,
       ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.plusJakartaSans(
-          color: const Color(0xFF8C7D6E),
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-        ),
-        prefixIcon: Icon(icon, color: const Color(0xFF9C5A1A), size: 20),
+      decoration: authInputDecoration(
+        hint: hint,
+        icon: icon,
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
                   _isObscure ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey,
+                  color: AuthPalette.muted,
                   size: 20,
                 ),
                 onPressed: () => setState(() => _isObscure = !_isObscure),
               )
             : null,
-        filled: true,
-        fillColor: const Color(0xFFFDF8F2),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
       ),
-
-      // 🔥 VALIDATOR BARU
       validator: (value) {
         if (value == null || value.isEmpty) {
           return "Wajib diisi";

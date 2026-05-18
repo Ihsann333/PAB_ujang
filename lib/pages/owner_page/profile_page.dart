@@ -6,6 +6,7 @@ import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'manage_tenants_page.dart';
+import 'owner_ui.dart';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -38,6 +39,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   Uint8List? _newKostPhotoBytes;
   String? _newKostPhotoName;
   KostLocationData? _newKostLocation;
+  bool isLoading = true;
 
   // Ambil email dari Auth Supabase
   String get userEmail => supabase.auth.currentUser?.email ?? 'Email tidak ditemukan';
@@ -64,7 +66,10 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   Future<void> _fetchOwnerProfile() async {
     try {
       final user = supabase.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        if (mounted) setState(() => isLoading = false);
+        return;
+      }
       final data = await supabase.from('profiles').select().eq('id', user.id).single();
       final kosts = await supabase
           .from('kosts')
@@ -77,9 +82,12 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           ownerKosts = (kosts as List)
               .map((item) => Map<String, dynamic>.from(item as Map))
               .toList();
+          isLoading = false;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   String _generateJoinCode() {
@@ -737,178 +745,363 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 
+  String _resolveOwnerValue(String key, {String fallback = '-'}) {
+    final value = ownerProfile?[key];
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
+
+  String _resolveFirstKostValue(String key, {String fallback = '-'}) {
+    if (ownerKosts.isEmpty) return fallback;
+    final value = ownerKosts.first[key];
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
+
+  Widget _buildProfileField(
+    String label,
+    String value, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDF7F0),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: OwnerPalette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ),
+              if (actionLabel != null && onAction != null)
+                TextButton(
+                  onPressed: onAction,
+                  style: TextButton.styleFrom(
+                    minimumSize: Size.zero,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    actionLabel,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: OwnerPalette.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleActionButton({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color foregroundColor,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: foregroundColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: foregroundColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: foregroundColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: foregroundColor.withOpacity(0.8),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: foregroundColor),
+          ],
+        ),
+      ),
+    );
+  }
+
   // --- MAIN BUILD ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      body: SingleChildScrollView(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 60),
-          child: Column(
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: const Color(0xFFEADBC9),
-                backgroundImage: ownerProfile?['profile_photo_url'] != null
-                    ? NetworkImage(ownerProfile!['profile_photo_url'].toString())
-                    : null,
-                child: ownerProfile?['profile_photo_url'] == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(height: 10),
-              TextButton.icon(
-                onPressed: _updateProfilePhoto,
-                icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                label: Text(
-                  "Pilih / Ubah Foto Profil",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF9C5A1A),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                ownerProfile?['full_name'] ?? "Owner",
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 28, color: const Color(0xFF2D241A)),
-              ),
-              const SizedBox(height: 25),
-
-              // Account Management Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white)
-                  ),
+      backgroundColor: OwnerPalette.background,
+      body: SafeArea(
+        child: isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: OwnerPalette.primary),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchOwnerProfile,
+                color: OwnerPalette.primary,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildInfoRow(Icons.email_outlined, "Email Pengguna", userEmail),
-                      const Divider(height: 20),
-                      _buildInfoRow(Icons.lock_outline, "Password Akun", "********", onEdit: _showChangePasswordDialog),
-                      const Divider(height: 20),
-                      _buildInfoRow(
-                        Icons.my_location_rounded,
-                        "Lokasi Kost",
+                      OwnerPageHeader(
+                        title: 'Profil Owner',
+                        subtitle:
+                            'Kelola akun, unit kost, foto, dan akses operasional dari satu halaman.',
+                        trailing: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.storefront_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      OwnerSurfaceCard(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 42,
+                              backgroundColor: OwnerPalette.softAccent,
+                              backgroundImage:
+                                  ownerProfile?['profile_photo_url'] != null
+                                  ? NetworkImage(
+                                      ownerProfile!['profile_photo_url']
+                                          .toString(),
+                                    )
+                                  : null,
+                              child: ownerProfile?['profile_photo_url'] == null
+                                  ? const Icon(
+                                      Icons.person_rounded,
+                                      size: 42,
+                                      color: OwnerPalette.primary,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              _resolveOwnerValue('full_name', fallback: 'Owner'),
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.sora(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: OwnerPalette.primaryDark,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              userEmail,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                color: OwnerPalette.muted,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextButton.icon(
+                              onPressed: _updateProfilePhoto,
+                              icon: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: OwnerPalette.primary,
+                                size: 18,
+                              ),
+                              label: Text(
+                                'Ubah Foto Profil',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: OwnerPalette.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const OwnerSectionHeader(
+                        title: 'Informasi Akun',
+                        subtitle: 'Ringkasan akun owner yang sedang aktif.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildProfileField(
+                        'Nama Owner',
+                        _resolveOwnerValue('full_name', fallback: 'Owner'),
+                      ),
+                      _buildProfileField('Email Pengguna', userEmail),
+                      _buildProfileField(
+                        'Password Akun',
+                        '••••••••',
+                        actionLabel: 'Ubah',
+                        onAction: _showChangePasswordDialog,
+                      ),
+                      const SizedBox(height: 8),
+                      const OwnerSectionHeader(
+                        title: 'Informasi Kost',
+                        subtitle:
+                            'Data unit pertama yang aktif ditampilkan untuk akses cepat.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildProfileField(
+                        'Jumlah Unit Kost',
+                        ownerKosts.length.toString(),
+                      ),
+                      _buildProfileField(
+                        'Nama Kost',
+                        _resolveFirstKostValue('name', fallback: 'Belum ada kost'),
+                      ),
+                      _buildProfileField(
+                        'Alamat Kost',
+                        _resolveFirstKostValue(
+                          'address',
+                          fallback: 'Belum ada kost',
+                        ),
+                      ),
+                      _buildProfileField(
+                        'Lokasi Kost',
                         ownerKosts.isEmpty
-                            ? "Belum ada kost"
+                            ? 'Belum ada kost'
                             : (KostLocationService.hasLocation(ownerKosts.first)
                                   ? KostLocationService.coordinateLabelFromMap(
                                       ownerKosts.first,
                                     )
-                                  : "Belum diatur"),
-                        onEdit: _updateKostLocation,
+                                  : 'Belum diatur'),
+                        actionLabel: ownerKosts.isEmpty ? null : 'Atur',
+                        onAction: ownerKosts.isEmpty ? null : _updateKostLocation,
                       ),
-                      const Divider(height: 20),
-                      _buildInfoRow(
-                        Icons.home_work_outlined,
-                        "Foto Kost",
+                      _buildProfileField(
+                        'Foto Kost',
                         ownerKosts.isEmpty
-                            ? "Belum ada kost"
+                            ? 'Belum ada kost'
                             : (ownerKosts.first['photo_url'] != null
-                                ? "Sudah ada foto"
-                                : "Belum ada foto"),
-                        onEdit: _updateKostPhoto,
+                                  ? 'Sudah ada foto'
+                                  : 'Belum ada foto'),
+                        actionLabel: ownerKosts.isEmpty ? null : 'Ubah',
+                        onAction: ownerKosts.isEmpty ? null : _updateKostPhoto,
+                      ),
+                      const SizedBox(height: 8),
+                      const OwnerSectionHeader(
+                        title: 'Aksi Owner',
+                        subtitle:
+                            'Shortcut untuk kelola penghuni dan pembaruan unit kost.',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildRoleActionButton(
+                        title: 'Kelola Penghuni',
+                        subtitle:
+                            'Lihat tenant aktif dan kelola status penghuni.',
+                        icon: Icons.people_rounded,
+                        backgroundColor: OwnerPalette.primary,
+                        foregroundColor: Colors.white,
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OwnerManageTenantsPage(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRoleActionButton(
+                        title: 'Tambah Unit Kost Baru',
+                        subtitle:
+                            'Ajukan unit baru lengkap dengan foto dan lokasi.',
+                        icon: Icons.add_business_rounded,
+                        backgroundColor: Colors.white,
+                        foregroundColor: OwnerPalette.primary,
+                        onPressed: _showAddKostDialog,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRoleActionButton(
+                        title: 'Ubah Foto Kost',
+                        subtitle:
+                            'Perbarui foto unit agar tampil lebih rapi di aplikasi.',
+                        icon: Icons.photo_camera_back_outlined,
+                        backgroundColor: Colors.white,
+                        foregroundColor: OwnerPalette.primary,
+                        onPressed: _updateKostPhoto,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRoleActionButton(
+                        title: 'Setel Lokasi Kost',
+                        subtitle:
+                            'Sinkronkan titik GPS agar lokasi mudah ditemukan.',
+                        icon: Icons.my_location_rounded,
+                        backgroundColor: Colors.white,
+                        foregroundColor: OwnerPalette.primary,
+                        onPressed: _updateKostLocation,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildRoleActionButton(
+                        title: 'Keluar Dashboard Owner',
+                        subtitle: 'Data login akan tetap tersimpan.',
+                        icon: Icons.logout_rounded,
+                        backgroundColor: const Color(0xFFFFF3F4),
+                        foregroundColor: const Color(0xFFE24D56),
+                        onPressed: _showLogoutConfirmation,
                       ),
                     ],
                   ),
                 ),
               ),
-
-              const SizedBox(height: 30),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF9C5A1A), foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
-                  ),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerManageTenantsPage())),
-                  icon: const Icon(Icons.people),
-                  label: Text("Kelola Penghuni", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white, foregroundColor: const Color(0xFF9C5A1A),
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
-                  ),
-                  onPressed: _showAddKostDialog,
-                  icon: const Icon(Icons.add_business),
-                  label: Text("Tambah Unit Kost Baru", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF9C5A1A),
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
-                  ),
-                  onPressed: _updateKostPhoto,
-                  icon: const Icon(Icons.photo_camera_back_outlined),
-                  label: Text("Pilih / Ubah Foto Kost", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF9C5A1A),
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))
-                  ),
-                  onPressed: _updateKostLocation,
-                  icon: const Icon(Icons.my_location_rounded),
-                  label: Text("Setel / Ubah Lokasi Kost", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: OutlinedButton.icon(
-                  onPressed: _showLogoutConfirmation,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFE24D56),
-                    side: const BorderSide(color: Color(0xFFF0C7CB)),
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 55),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: Text(
-                    "Keluar",
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFFE24D56),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

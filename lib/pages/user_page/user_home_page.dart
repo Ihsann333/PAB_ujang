@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/pages/user_page/user_ui.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
 import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
@@ -866,10 +867,6 @@ class _UserHomePageState extends State<UserHomePage> {
                             _resolveProfileValue('email'),
                       ),
                       _buildPopupField(
-                        "Peran Akun",
-                        _resolveUserRoleLabel(),
-                      ),
-                      _buildPopupField(
                         "Status Akun",
                         _resolveApprovalLabel(),
                       ),
@@ -880,10 +877,6 @@ class _UserHomePageState extends State<UserHomePage> {
                       _buildPopupField(
                         "Tanggal Masuk Kost",
                         _resolveJoinDate(),
-                      ),
-                      _buildPopupField(
-                        "ID Pengguna",
-                        supabase.auth.currentUser?.id ?? "-",
                       ),
                       _buildPopupField(
                         "Password",
@@ -1211,45 +1204,33 @@ class _UserHomePageState extends State<UserHomePage> {
     final bool isPendingExit = profileData?['exit_request'] ?? false;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
+      backgroundColor: UserPalette.background,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: fetchData,
-          color: const Color(0xFF9C5A1A),
+          color: UserPalette.primary,
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
               _buildTopHeader(),
               const SizedBox(height: 25),
-              Text(
-                "Informasi Unit Kost",
-                style: GoogleFonts.sora(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D241A),
-                ),
+              const UserSectionHeader(
+                title: "Informasi Unit Kost",
+                subtitle: "Ringkasan tempat tinggal yang sedang aktif.",
               ),
               const SizedBox(height: 20),
               _buildUnitCard(isPendingExit),
               const SizedBox(height: 28),
-              Text(
-                "Status Pembayaran",
-                style: GoogleFonts.sora(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D241A),
-                ),
+              const UserSectionHeader(
+                title: "Status Pembayaran",
+                subtitle: "Pantau tagihan bulan berjalan dari sini.",
               ),
               const SizedBox(height: 15),
               _buildPaymentStatusCard(),
               const SizedBox(height: 35),
-              Text(
-                "Pengumuman Terbaru",
-                style: GoogleFonts.sora(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2D241A),
-                ),
+              const UserSectionHeader(
+                title: "Pengumuman Terbaru",
+                subtitle: "Update penting dari owner atau sistem kost.",
               ),
               const SizedBox(height: 15),
               _buildReminderPreview(),
@@ -1261,63 +1242,47 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildTopHeader() {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: const Color(0xFFF3E3CF),
-          backgroundImage: profileData?['profile_photo_url'] != null
-              ? NetworkImage(profileData!['profile_photo_url'].toString())
-              : null,
-          child: profileData?['profile_photo_url'] == null
-              ? const Icon(Icons.person, color: Color(0xFF9C5A1A))
-              : null,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+    return UserPageHeader(
+      title: "Halo, ${profileData?['full_name'] ?? 'User'}",
+      subtitle: kost != null
+          ? "Kelola informasi kost, pembayaran, dan pengumuman terbaru."
+          : "Kamu belum terhubung ke kost. Gabung dulu untuk melihat detail unit dan tagihan.",
+      trailing: InkWell(
+        onTap: _showJoinKostDialog,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.18)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white.withOpacity(0.16),
+                backgroundImage: profileData?['profile_photo_url'] != null
+                    ? NetworkImage(profileData!['profile_photo_url'].toString())
+                    : null,
+                child: profileData?['profile_photo_url'] == null
+                    ? const Icon(Icons.person, color: Colors.white, size: 18)
+                    : null,
+              ),
+              const SizedBox(height: 8),
               Text(
-                profileData?['full_name'] ?? "User",
+                "Daftar Kost",
                 style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ],
           ),
         ),
-        GestureDetector(
-          onTap: _showJoinKostDialog,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3E3CF),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF9C5A1A)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.person_add_alt_1_rounded,
-                  size: 16,
-                  color: Color(0xFF9C5A1A),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  "Daftar Kost",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF9C5A1A),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1557,32 +1522,16 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildNoKostPlaceholder() {
-    return Container(
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.house_siding_rounded,
-            size: 60,
-            color: Color(0xFF9C5A1A),
-          ),
-          const SizedBox(height: 15),
-          Text(
-            "Belum terdaftar di kost manapun.",
-            style: GoogleFonts.plusJakartaSans(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 20),
-          _buildActionButton(
-            "Daftar Kost Sekarang",
-            const Color(0xFF9C5A1A),
-            Colors.white,
-            _showJoinKostDialog,
-          ),
-        ],
+    return UserEmptyStateCard(
+      icon: Icons.house_siding_rounded,
+      title: "Belum Terdaftar di Kost",
+      subtitle:
+          "Masukkan kode kost dari owner agar detail unit, pembayaran, dan pengumuman bisa tampil di sini.",
+      action: _buildActionButton(
+        "Daftar Kost Sekarang",
+        const Color(0xFF9C5A1A),
+        Colors.white,
+        _showJoinKostDialog,
       ),
     );
   }
@@ -1618,19 +1567,11 @@ class _UserHomePageState extends State<UserHomePage> {
 
   Widget _buildReminderPreview() {
     if (reminders.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Center(
-          child: Text(
-            "Belum ada pengumuman",
-            style: GoogleFonts.plusJakartaSans(color: Colors.grey),
-          ),
-        ),
+      return const UserEmptyStateCard(
+        icon: Icons.notifications_off_rounded,
+        title: "Belum Ada Pengumuman",
+        subtitle:
+            "Saat ada update dari owner atau sistem, informasinya akan muncul di bagian ini.",
       );
     }
 

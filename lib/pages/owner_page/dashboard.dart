@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
+import 'owner_ui.dart';
 import 'reminder_page.dart';
 import 'profile_page.dart';
 
@@ -12,31 +13,62 @@ class OwnerDashboard extends StatefulWidget {
 }
 
 class _OwnerDashboardState extends State<OwnerDashboard> {
-  int selectedIndex = 0;
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    const OwnerHomePage(),
+    const ReminderPage(),
+    const OwnerProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      const OwnerHomePage(),
-      const ReminderPage(),
-      const OwnerProfilePage(),
-    ];
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E8DA),
-      body: pages[selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        selectedItemColor: const Color(0xFF9C5A1A),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
-        onTap: (i) => setState(() => selectedIndex = i),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard, size: 28), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.alarm, size: 28), label: "Reminder"),
-          BottomNavigationBarItem(icon: Icon(Icons.person, size: 28), label: "Profil"),
-        ],
+      backgroundColor: OwnerPalette.background,
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.white,
+            currentIndex: _selectedIndex,
+            selectedItemColor: OwnerPalette.primary,
+            unselectedItemColor: Colors.grey,
+            elevation: 0,
+            selectedLabelStyle: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+            ),
+            unselectedLabelStyle: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w500,
+            ),
+            onTap: (index) => setState(() => _selectedIndex = index),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_filled),
+                label: "Home",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications_rounded),
+                label: "Reminder",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                label: "Profil",
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
