@@ -51,7 +51,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
     });
   }
 
-  Future<String?> _uploadProfilePhoto(String userId) async {
+  Future<UploadedImage?> _uploadProfilePhoto(String userId) async {
     final bytes = _profilePhotoBytes;
     if (bytes == null) return null;
 
@@ -61,9 +61,12 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
     try {
       return await MediaService.uploadImageBytes(
         bytes: bytes,
-        bucket: 'kostly-media',
+        bucket: MediaService.bucketName,
         folder: 'profiles/$userId',
-        fileName: fileName,
+        fileName: MediaService.buildFileName(
+          prefix: 'profile_$userId',
+          originalFileName: fileName,
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -90,7 +93,7 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
       final user = res.user;
       if (user == null) throw "Gagal membuat akun, silahkan coba lagi.";
 
-      final profilePhotoUrl = await _uploadProfilePhoto(user.id);
+      final uploadedProfilePhoto = await _uploadProfilePhoto(user.id);
 
       await supabase.from('profiles').insert({
         'id': user.id,
@@ -99,8 +102,14 @@ class _RegisterUserPageState extends State<RegisterUserPage> {
         'email': emailController.text.trim(),
         'role': 'user',
         'is_approved': true,
-        'profile_photo_url': profilePhotoUrl,
       });
+      if (uploadedProfilePhoto != null) {
+        await MediaService.upsertProfileImage(
+          userId: user.id,
+          imageUrl: uploadedProfilePhoto.publicUrl,
+          storagePath: uploadedProfilePhoto.storagePath,
+        );
+      }
 
       _showSnackBar("Registrasi Berhasil! Silahkan Login.");
       if (mounted) Navigator.pop(context);

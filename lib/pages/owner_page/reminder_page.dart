@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +28,7 @@ class _ReminderPageState extends State<ReminderPage> {
   );
   final TextEditingController _titleCtrl = TextEditingController();
   final TextEditingController _msgCtrl = TextEditingController();
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   List myKosts = [];
   String? selectedKostId;
@@ -40,10 +43,17 @@ class _ReminderPageState extends State<ReminderPage> {
   void initState() {
     super.initState();
     _refreshPage();
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'owner_payments' || event.scope == 'owner_profiles') {
+        _refreshPage();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _notificationSubscription?.cancel();
     _titleCtrl.dispose();
     _msgCtrl.dispose();
     super.dispose();

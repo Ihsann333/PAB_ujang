@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'admin_ui.dart';
 import 'monitor_page.dart';
 import 'approval_page.dart';
@@ -18,6 +19,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const MonitorPage(),
     const ApprovalPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    AppNotificationService.startRealtimeSyncForCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    AppNotificationService.stopRealtimeSync();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Aplikasi membutuhkan kamera untuk mengambil foto profil dan foto kost.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi membutuhkan akses galeri untuk memilih foto profil dan foto kost.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Aplikasi membutuhkan akses galeri untuk mengelola foto yang dipilih pengguna.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikasi membutuhkan lokasi untuk menetapkan titik lokasi kost agar bisa divalidasi admin dan dilihat pengguna.</string>
 	<key>NSUserNotificationUsageDescription</key>

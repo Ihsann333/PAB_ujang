@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 TextStyle _soraApproval({
@@ -45,12 +48,25 @@ class _ApprovalPageState extends State<ApprovalPage> {
   final Set<String> approvingKostIds = {};
   final Set<String> rejectingOwnerIds = {};
   final Set<String> rejectingKostIds = {};
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   @override
   void initState() {
     super.initState();
     adminEmail = supabase.auth.currentUser?.email;
     fetchOwners();
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'admin_profiles' || event.scope == 'admin_kosts') {
+        fetchOwners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
   }
 
   // --- UTILS ---

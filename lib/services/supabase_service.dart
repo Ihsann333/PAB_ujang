@@ -73,4 +73,68 @@ class SupabaseService {
       if (tenantId != null) 'tenant_id': tenantId,
     };
   }
+
+  static bool isReminderForUser(
+    Map reminder, {
+    required String currentKostId,
+    required String currentUserId,
+  }) {
+    final directKost = reminder['kost_id']?.toString();
+    if (directKost != null && directKost.isNotEmpty && directKost != currentKostId) {
+      return false;
+    }
+
+    for (final field in const ['message', 'pesan']) {
+      final raw = reminder[field];
+      if (raw is! String || raw.trim().isEmpty) continue;
+
+      final parsed = parseReminder(raw);
+      final packedKostId = parsed?['kost_id'];
+      if (packedKostId != null &&
+          packedKostId.isNotEmpty &&
+          packedKostId != currentKostId) {
+        return false;
+      }
+
+      final packedTenantId = parsed?['tenant_id'];
+      if (packedTenantId != null && packedTenantId.isNotEmpty) {
+        return packedTenantId == currentUserId;
+      }
+    }
+
+    return true;
+  }
+
+  static String reminderTitle(Map reminder) {
+    final directTitle = reminder['title'];
+    if (directTitle is String && directTitle.trim().isNotEmpty) {
+      return directTitle.trim();
+    }
+
+    for (final field in const ['message', 'pesan']) {
+      final raw = reminder[field];
+      if (raw is! String || raw.trim().isEmpty) continue;
+      final parsed = parseReminder(raw);
+      if (parsed != null && (parsed['title']?.trim().isNotEmpty ?? false)) {
+        return parsed['title']!.trim();
+      }
+      return raw.trim();
+    }
+
+    return 'Pengumuman';
+  }
+
+  static String reminderBody(Map reminder) {
+    for (final field in const ['message', 'pesan', 'description']) {
+      final raw = reminder[field];
+      if (raw is! String || raw.trim().isEmpty) continue;
+      final parsed = parseReminder(raw);
+      if (parsed != null && (parsed['body']?.trim().isNotEmpty ?? false)) {
+        return parsed['body']!.trim();
+      }
+      return raw.trim();
+    }
+
+    return '';
+  }
 }

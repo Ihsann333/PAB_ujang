@@ -48,22 +48,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
           .select()
           .eq('id', user.id)
           .single();
+      final profileWithImage = await MediaService.attachProfileImage(
+        Map<String, dynamic>.from(profile),
+      );
 
       Map<String, dynamic>? kost;
-      if (profile['kost_id'] != null) {
+      if (profileWithImage['kost_id'] != null) {
         final kostResult = await supabase
             .from('kosts')
             .select()
-            .eq('id', profile['kost_id'].toString())
+            .eq('id', profileWithImage['kost_id'].toString())
             .maybeSingle();
         if (kostResult != null) {
-          kost = Map<String, dynamic>.from(kostResult);
+          kost = await MediaService.attachKostImage(
+            Map<String, dynamic>.from(kostResult),
+          );
         }
       }
 
       if (mounted) {
         setState(() {
-          profileData = Map<String, dynamic>.from(profile);
+          profileData = profileWithImage;
           kostData = kost;
           isLoading = false;
         });
@@ -81,22 +86,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
     if (user == null) return;
 
     try {
-      final photo = await MediaService.pickImage(context);
-      if (photo == null) return;
-
-      final bytes = await photo.readAsBytes();
-      final photoUrl = await MediaService.uploadImageBytes(
-        bytes: bytes,
-        bucket: 'kostly-media',
-        folder: 'profiles/${user.id}',
-        fileName:
-            'user_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final photoUrl = await MediaService.pickAndUploadProfilePhoto(
+        context,
+        userId: user.id,
+        filePrefix: 'user',
       );
-
-      await supabase
-          .from('profiles')
-          .update({'profile_photo_url': photoUrl})
-          .eq('id', user.id);
+      if (photoUrl == null) return;
 
       await _fetchData();
 

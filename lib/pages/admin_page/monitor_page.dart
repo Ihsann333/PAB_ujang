@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/admin_page/detail_kos.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
 TextStyle _soraAdmin({double? fontSize, FontWeight? fontWeight, Color? color}) {
@@ -25,6 +28,7 @@ class MonitorPage extends StatefulWidget {
 
 class _MonitorPageState extends State<MonitorPage> {
   final supabase = SupabaseService.client;
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   int totalKos = 0;
   int totalOwner = 0;
@@ -37,6 +41,18 @@ class _MonitorPageState extends State<MonitorPage> {
     super.initState();
     adminEmail = supabase.auth.currentUser?.email;
     fetchStats();
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'admin_profiles' || event.scope == 'admin_kosts') {
+        fetchStats();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
   }
 
   String formatRupiah(dynamic price) {

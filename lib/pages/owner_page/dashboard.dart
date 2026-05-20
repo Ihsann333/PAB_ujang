@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 import 'home_page.dart';
 import 'owner_ui.dart';
 import 'reminder_page.dart';
@@ -20,6 +21,18 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     const ReminderPage(),
     const OwnerProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    AppNotificationService.startRealtimeSyncForCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    AppNotificationService.stopRealtimeSync();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -123,7 +123,7 @@ class KostLocationService {
     }
   }
 
-  static Future<void> saveKostWithLocation({
+  static Future<Map<String, dynamic>?> saveKostWithLocation({
     required SupabaseClient supabase,
     String? kostId,
     required Map<String, dynamic> basePayload,
@@ -135,11 +135,22 @@ class KostLocationService {
     for (final payload in payloads) {
       try {
         if (kostId == null) {
-          await supabase.from('kosts').insert(payload);
+          final inserted = await supabase
+              .from('kosts')
+              .insert(payload)
+              .select()
+              .single();
+          return Map<String, dynamic>.from(inserted);
         } else {
-          await supabase.from('kosts').update(payload).eq('id', kostId);
+          final updated = await supabase
+              .from('kosts')
+              .update(payload)
+              .eq('id', kostId)
+              .select()
+              .maybeSingle();
+          if (updated != null) return Map<String, dynamic>.from(updated);
         }
-        return;
+        return null;
       } catch (error) {
         lastError = error;
       }

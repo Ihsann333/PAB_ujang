@@ -71,17 +71,23 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         return;
       }
       final data = await supabase.from('profiles').select().eq('id', user.id).single();
+      final profileWithImage = await MediaService.attachProfileImage(
+        Map<String, dynamic>.from(data),
+      );
       final kosts = await supabase
           .from('kosts')
           .select()
           .eq('owner_id', user.id)
           .order('created_at', ascending: false);
+      final kostList = await MediaService.attachKostImages(
+        (kosts as List)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(),
+      );
       if (mounted) {
         setState(() {
-          ownerProfile = Map<String, dynamic>.from(data);
-          ownerKosts = (kosts as List)
-              .map((item) => Map<String, dynamic>.from(item as Map))
-              .toList();
+          ownerProfile = profileWithImage;
+          ownerKosts = kostList;
           isLoading = false;
         });
       }
@@ -125,21 +131,12 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     if (user == null) return;
 
     try {
-      final photo = await MediaService.pickImage(context);
-      if (photo == null) return;
-
-      final bytes = await photo.readAsBytes();
-      final photoUrl = await MediaService.uploadImageBytes(
-        bytes: bytes,
-        bucket: 'kostly-media',
-        folder: 'profiles/${user.id}',
-        fileName:
-            'owner_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final photoUrl = await MediaService.pickAndUploadProfilePhoto(
+        context,
+        userId: user.id,
+        filePrefix: 'owner',
       );
-
-      await supabase.from('profiles').update({
-        'profile_photo_url': photoUrl,
-      }).eq('id', user.id);
+      if (photoUrl == null) return;
 
       await _fetchOwnerProfile();
 
@@ -193,21 +190,11 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     if (selectedKostId == null) return;
 
     try {
-      final photo = await MediaService.pickImage(context);
-      if (photo == null) return;
-
-      final bytes = await photo.readAsBytes();
-      final photoUrl = await MediaService.uploadImageBytes(
-        bytes: bytes,
-        bucket: 'kostly-media',
-        folder: 'kosts/$selectedKostId',
-        fileName:
-            'kost_${selectedKostId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final photoUrl = await MediaService.pickAndUploadKostPhoto(
+        context,
+        kostId: selectedKostId,
       );
-
-      await supabase.from('kosts').update({
-        'photo_url': photoUrl,
-      }).eq('id', selectedKostId);
+      if (photoUrl == null) return;
 
       await _fetchOwnerProfile();
 
@@ -294,17 +281,20 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     setModalState(() => isSaving = true);
 
     try {
-      final kostPhotoUrl = _newKostPhotoBytes == null
+      final kostUpload = _newKostPhotoBytes == null
           ? null
           : await MediaService.uploadImageBytes(
               bytes: _newKostPhotoBytes!,
-              bucket: 'kostly-media',
+              bucket: MediaService.bucketName,
               folder: 'kosts/${supabase.auth.currentUser?.id ?? 'unknown'}',
-              fileName:
-                  _newKostPhotoName ?? 'kost_${DateTime.now().millisecondsSinceEpoch}.jpg',
+              fileName: MediaService.buildFileName(
+                prefix: 'kost_${supabase.auth.currentUser?.id ?? 'unknown'}',
+                originalFileName:
+                    _newKostPhotoName ?? 'kost_placeholder.jpg',
+              ),
             );
 
-      await KostLocationService.saveKostWithLocation(
+      final createdKost = await KostLocationService.saveKostWithLocation(
         supabase: supabase,
         basePayload: {
           'owner_id': supabase.auth.currentUser?.id,
@@ -318,11 +308,18 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           'join_code': _generateJoinCode(),
           'is_approved': false,
           'rules': _rulesCtrl.text.trim(),
-          'photo_url': kostPhotoUrl,
           'created_at': DateTime.now().toIso8601String(),
         },
         location: _newKostLocation,
       );
+      final createdKostId = createdKost?['id']?.toString();
+      if (kostUpload != null && createdKostId != null && createdKostId.isNotEmpty) {
+        await MediaService.upsertKostImage(
+          kostId: createdKostId,
+          imageUrl: kostUpload.publicUrl,
+          storagePath: kostUpload.storagePath,
+        );
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -330,6 +327,7 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
           const SnackBar(content: Text("Unit berhasil diajukan ke admin!"), backgroundColor: Colors.green),
         );
       }
+      await _fetchOwnerProfile();
       
       _nameCtrl.clear();
       _addressCtrl.clear();

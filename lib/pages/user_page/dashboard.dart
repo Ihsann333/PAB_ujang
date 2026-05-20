@@ -4,6 +4,7 @@ import 'package:kostly_pa/pages/user_page/profile_page.dart';
 import 'package:kostly_pa/pages/user_page/reminder_page_user.dart';
 import 'package:kostly_pa/pages/user_page/user_home_page.dart';
 import 'package:kostly_pa/pages/user_page/user_ui.dart';
+import 'package:kostly_pa/services/notification_service.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -20,6 +21,18 @@ class _UserDashboardState extends State<UserDashboard> {
     const ReminderPageUser(),
     const UserProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    AppNotificationService.startRealtimeSyncForCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    AppNotificationService.stopRealtimeSync();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

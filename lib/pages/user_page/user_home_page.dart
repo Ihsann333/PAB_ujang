@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +31,7 @@ class _UserHomePageState extends State<UserHomePage> {
     decimalDigits: 0,
   );
   final TextEditingController _passwordCtrl = TextEditingController();
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   Map? profileData;
   Map? kost;
@@ -40,10 +43,17 @@ class _UserHomePageState extends State<UserHomePage> {
   void initState() {
     super.initState();
     fetchData();
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'user_reminders' || event.scope == 'user_payments') {
+        fetchData();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _notificationSubscription?.cancel();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -62,9 +72,12 @@ class _UserHomePageState extends State<UserHomePage> {
           .select()
           .eq('id', user.id)
           .single();
+      final profileWithImage = await MediaService.attachProfileImage(
+        Map<String, dynamic>.from(profile),
+      );
 
-      if (profile['kost_id'] != null) {
-        final kosId = profile['kost_id'].toString();
+      if (profileWithImage['kost_id'] != null) {
+        final kosId = profileWithImage['kost_id'].toString();
 
         // 🔹 ambil data kost
         final kosData = await supabase
@@ -72,6 +85,9 @@ class _UserHomePageState extends State<UserHomePage> {
             .select()
             .eq('id', kosId)
             .single();
+        final kostWithImage = await MediaService.attachKostImage(
+          Map<String, dynamic>.from(kosData),
+        );
 
         // 🔹 ambil pembayaran
         final paymentData = await _fetchCurrentPayment(user.id, kosId);
@@ -79,9 +95,15 @@ class _UserHomePageState extends State<UserHomePage> {
         // 🔥 AMBIL SEMUA REMINDER DARI SERVICE
         final allReminders = await SupabaseService.getUserReminders();
 
-        final filteredReminders = allReminders.where((r) {
-          return _isReminderForThisUserAndKost(r, kosId, user.id);
-        }).toList();
+        final filteredReminders = allReminders
+            .where(
+              (r) => SupabaseService.isReminderForUser(
+                r,
+                currentKostId: kosId,
+                currentUserId: user.id,
+              ),
+            )
+            .toList();
 
         final reminderData = List<Map<String, dynamic>>.from(
           filteredReminders,
@@ -89,8 +111,8 @@ class _UserHomePageState extends State<UserHomePage> {
 
         if (mounted) {
           setState(() {
-            profileData = profile;
-            kost = kosData;
+            profileData = profileWithImage;
+            kost = kostWithImage;
             currentPayment = paymentData;
             reminders = reminderData; // ✅ sudah aman
             isLoading = false;
@@ -99,7 +121,7 @@ class _UserHomePageState extends State<UserHomePage> {
       } else {
         if (mounted) {
           setState(() {
-            profileData = profile;
+            profileData = profileWithImage;
             currentPayment = null;
             reminders = []; // 🔥 biar jelas kosong
             isLoading = false;
@@ -519,22 +541,12 @@ class _UserHomePageState extends State<UserHomePage> {
     if (user == null) return;
 
     try {
-      final photo = await MediaService.pickImage(context);
-      if (photo == null) return;
-
-      final bytes = await photo.readAsBytes();
-      final photoUrl = await MediaService.uploadImageBytes(
-        bytes: bytes,
-        bucket: 'kostly-media',
-        folder: 'profiles/${user.id}',
-        fileName:
-            'user_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      final photoUrl = await MediaService.pickAndUploadProfilePhoto(
+        context,
+        userId: user.id,
+        filePrefix: 'user',
       );
-
-      await supabase
-          .from('profiles')
-          .update({'profile_photo_url': photoUrl})
-          .eq('id', user.id);
+      if (photoUrl == null) return;
 
       await fetchData();
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -28,6 +30,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     symbol: 'Rp ',
     decimalDigits: 0,
   );
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   bool isLoading = true;
   int totalKos = 0;
@@ -43,6 +46,18 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
   void initState() {
     super.initState();
     refreshAllData();
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'owner_payments' || event.scope == 'owner_profiles') {
+        refreshAllData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> refreshAllData() async {

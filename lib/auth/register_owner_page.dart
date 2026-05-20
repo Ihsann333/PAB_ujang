@@ -91,12 +91,16 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   }) async {
     if (bytes == null) return null;
     try {
-      return await MediaService.uploadImageBytes(
+      final uploaded = await MediaService.uploadImageBytes(
         bytes: bytes,
-        bucket: 'kostly-media',
+        bucket: MediaService.bucketName,
         folder: folder,
-        fileName: fileName,
+        fileName: MediaService.buildFileName(
+          prefix: folder.startsWith('profiles/') ? 'owner_profile' : 'kost_photo',
+          originalFileName: fileName,
+        ),
       );
+      return uploaded.publicUrl;
     } catch (e) {
       if (mounted) {
         final message = e.toString().contains('Bucket not found')
@@ -142,10 +146,15 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
         'email': emailController.text.trim(),
         'role': 'owner',
         'is_approved': false,
-        'profile_photo_url': ownerPhotoUrl,
       });
+      if (ownerPhotoUrl != null) {
+        await MediaService.upsertProfileImage(
+          userId: user.id,
+          imageUrl: ownerPhotoUrl,
+        );
+      }
 
-      await KostLocationService.saveKostWithLocation(
+      final createdKost = await KostLocationService.saveKostWithLocation(
         supabase: supabase,
         basePayload: {
           'owner_id': user.id,
@@ -159,10 +168,16 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
           'slots': int.tryParse(slotController.text.trim()) ?? 0,
           'join_code': generateCode(),
           'is_approved': false,
-          'photo_url': kostPhotoUrl,
         },
         location: _kostLocation,
       );
+      final createdKostId = createdKost?['id']?.toString();
+      if (kostPhotoUrl != null && createdKostId != null && createdKostId.isNotEmpty) {
+        await MediaService.upsertKostImage(
+          kostId: createdKostId,
+          imageUrl: kostPhotoUrl,
+        );
+      }
 
       _showNotice("Registrasi Berhasil! Menunggu persetujuan admin.");
       if (mounted) Navigator.pop(context);

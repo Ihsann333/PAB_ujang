@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:kostly_pa/services/notification_service.dart'; // ✅ TAMBAHAN
-import 'package:kostly_pa/services/supabase_service.dart';
 import 'package:kostly_pa/pages/user_page/user_ui.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // ✅ TAMBAHAN
+import 'package:kostly_pa/services/notification_service.dart';
+import 'package:kostly_pa/services/supabase_service.dart';
 
 class ReminderPageUser extends StatefulWidget {
   const ReminderPageUser({super.key});
@@ -16,66 +17,20 @@ class ReminderPageUser extends StatefulWidget {
 class _ReminderPageUserState extends State<ReminderPageUser> {
   List reminders = [];
   bool isLoading = true;
-  RealtimeChannel? _reminderChannel; // ✅ TAMBAHAN
+  StreamSubscription<NotificationSyncEvent>? _notificationSubscription;
 
   @override
   void initState() {
     super.initState();
     fetchReminders();
-    _subscribeReminders(); // ✅ TAMBAHAN
+    _notificationSubscription = AppNotificationService.events.listen((event) {
+      if (!mounted) return;
+      if (event.scope == 'user_reminders' || event.scope == 'user_payments') {
+        fetchReminders();
+      }
+    });
   }
 
-  // ✅ TAMBAHAN: Realtime listener agar notifikasi muncul otomatis
-  Future<void> _subscribeReminders() async {
-    final supabase = SupabaseService.client;
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    // Ambil kost_id user dulu
-    final profile = await supabase
-        .from('profiles')
-        .select('kost_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-    final kostId = profile?['kost_id']?.toString();
-    if (kostId == null) return;
-
-    // Listen realtime ke tabel reminders
-    _reminderChannel = supabase
-        .channel('reminders-user-$kostId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'reminders',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'kost_id',
-            value: kostId,
-          ),
-          callback: (payload) async {
-            final newRow = payload.newRecord;
-            final message = newRow['message']?.toString() ?? '';
-            final parsed = SupabaseService.parseReminder(message);
-
-            // Cek apakah reminder ini untuk semua atau khusus user ini
-            final tenantId = parsed?['tenant_id'];
-            if (tenantId != null && tenantId != user.id) return;
-
-            final title = parsed?['title'] ?? 'Pengumuman Kost';
-            final body = parsed?['body'] ?? message;
-
-            // Tampilkan notifikasi lokal ke penghuni
-            await AppNotificationService.show(title: title, body: body);
-
-            // Refresh list reminder
-            fetchReminders();
-          },
-        )
-        .subscribe();
-  }
-
-  // ✅ Ambil dari service (sinkron dengan Home)
   Future<void> fetchReminders() async {
     try {
       final supabase = SupabaseService.client;
@@ -86,7 +41,6 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
         return;
       }
 
-      // 🔥 ambil kost_id user
       final profile = await supabase
           .from('profiles')
           .select('kost_id')
@@ -94,28 +48,15 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
           .single();
 
       final kostId = profile['kost_id']?.toString();
-
       final data = await SupabaseService.getUserReminders();
 
-      // 🔥 FILTER (INI KUNCI NYA)
       final filtered = data.where((r) {
-        final reminderKost = r['kost_id']?.toString();
-
-        // filter berdasarkan kost
-        if (kostId != null && reminderKost != null) {
-          if (kostId != reminderKost) return false;
-        }
-
-        // cek kalau ada tenant khusus
-        final parsed = SupabaseService.parseReminder(
-          r['message'] ?? r['pesan'] ?? '',
+        if (kostId == null || kostId.isEmpty) return false;
+        return SupabaseService.isReminderForUser(
+          r,
+          currentKostId: kostId,
+          currentUserId: user.id,
         );
-
-        if (parsed != null && parsed['tenant_id'] != null) {
-          return parsed['tenant_id'] == user.id;
-        }
-
-        return true;
       }).toList();
 
       if (mounted) {
@@ -125,40 +66,11 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
         });
       }
     } catch (e) {
-      print("ERROR: $e");
+      debugPrint('ERROR REMINDER USER: $e');
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // 🔽 Ambil title (pakai parser service kalau perlu)
-  String _reminderTitle(Map r) {
-    final dynamic title = r['title'];
-    if (title is String && title.trim().isNotEmpty) return title;
-
-    for (final field in ['message', 'pesan']) {
-      final raw = r[field];
-      if (raw is String && raw.trim().isNotEmpty) {
-        final parsed = SupabaseService.parseReminder(raw);
-        return parsed != null ? parsed['title']! : raw;
-      }
-    }
-
-    return 'Pengumuman';
-  }
-
-  // 🔽 Ambil isi pesan
-  String _reminderText(Map r) {
-    for (final field in ['message', 'pesan', 'description']) {
-      final raw = r[field];
-      if (raw is String && raw.trim().isNotEmpty) {
-        final parsed = SupabaseService.parseReminder(raw);
-        return parsed != null ? parsed['body']! : raw;
-      }
-    }
-    return '';
-  }
-
-  // 🔽 Format waktu (TIDAK DIUBAH)
   String _formatReminderTime(Map r) {
     final dynamic raw = r['reminder_at'] ?? r['created_at'] ?? r['waktu'];
     if (raw == null) return '--:--';
@@ -179,7 +91,7 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
 
   @override
   void dispose() {
-    _reminderChannel?.unsubscribe(); // ✅ TAMBAHAN
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 
@@ -256,7 +168,7 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
                     children: [
                       Expanded(
                         child: Text(
-                          _reminderTitle(r),
+                          SupabaseService.reminderTitle(r),
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
@@ -277,7 +189,7 @@ class _ReminderPageUserState extends State<ReminderPageUser> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _reminderText(r),
+                    SupabaseService.reminderBody(r),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       height: 1.45,
