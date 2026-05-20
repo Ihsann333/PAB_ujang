@@ -107,7 +107,7 @@ class _AuthHero extends StatelessWidget {
     return Container(
       height: height,
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 34),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(34),
         gradient: const LinearGradient(
@@ -123,11 +123,11 @@ class _AuthHero extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            top: -26,
-            left: -24,
+            top: -20,
+            left: -18,
             child: Container(
-              width: 108,
-              height: 108,
+              width: 124,
+              height: 124,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.14),
                 shape: BoxShape.circle,
@@ -135,40 +135,43 @@ class _AuthHero extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 16,
-            left: 10,
+            top: 26,
+            left: 18,
             child: Container(
-              width: 56,
-              height: 56,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(32),
               ),
             ),
           ),
           Positioned(
-            right: 8,
-            top: 24,
+            right: 6,
+            top: 8,
             child: Transform.rotate(
-              angle: 0.35,
+              angle: 0.26,
               child: Container(
-                width: 26,
-                height: 112,
+                width: 92,
+                height: 92,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.14),
+                    width: 8,
+                  ),
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
           ),
           Positioned(
-            right: 38,
-            top: 44,
+            right: 22,
+            top: 26,
             child: Transform.rotate(
-              angle: -0.12,
+              angle: 0.32,
               child: Container(
-                width: 18,
-                height: 86,
+                width: 12,
+                height: 74,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(99),
@@ -200,16 +203,16 @@ class _AuthHero extends StatelessWidget {
               const Spacer(),
               if (showLogo)
                 Container(
-                  width: 58,
-                  height: 58,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.14),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(color: Colors.white.withOpacity(0.16)),
                   ),
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
                       'assets/images/login_logo_kostly.jpeg',
                       fit: BoxFit.cover,

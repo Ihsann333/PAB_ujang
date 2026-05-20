@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/pages/owner_page/manage_tenants_page.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
+import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
@@ -79,7 +80,12 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           .eq('owner_id', userId)
           .order('created_at', ascending: false);
 
-      final List fetchedKosts = kosRes as List;
+      final List<Map<String, dynamic>> fetchedKosts = await MediaService
+          .attachKostImages(
+            (kosRes as List)
+                .map((item) => Map<String, dynamic>.from(item as Map))
+                .toList(),
+          );
       int penghuniCount = 0;
       int profit = 0;
       final List<Map<String, dynamic>> tempKosList = [];
@@ -1037,6 +1043,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
   Widget _kosCard(Map kos) {
     bool isApproved = kos['is_approved'] == true;
+    final String? photoUrl = kos['photo_url']?.toString();
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -1054,10 +1061,16 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
         },
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
+          radius: 22,
           backgroundColor: isApproved
               ? const Color(0xFF9C5A1A)
               : Colors.grey.shade300,
-          child: const Icon(Icons.home_rounded, color: Colors.white),
+          backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+              ? NetworkImage(photoUrl)
+              : null,
+          child: (photoUrl == null || photoUrl.isEmpty)
+              ? const Icon(Icons.home_rounded, color: Colors.white)
+              : null,
         ),
         title: Text(
           kos['name'] ?? '-',
@@ -1114,6 +1127,9 @@ class DetailKosPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? photoUrl = kos['photo_url']?.toString();
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFBFBFB),
       body: CustomScrollView(
@@ -1136,11 +1152,21 @@ class DetailKosPage extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: const Color(0xFFEADBC8),
-                child: const Icon(
-                  Icons.apartment_rounded,
-                  size: 120,
-                  color: Color(0xFF9C5A1A),
-                ),
+                child: hasPhoto
+                    ? Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.apartment_rounded,
+                          size: 120,
+                          color: Color(0xFF9C5A1A),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.apartment_rounded,
+                        size: 120,
+                        color: Color(0xFF9C5A1A),
+                      ),
               ),
             ),
           ),
@@ -1442,6 +1468,7 @@ class OwnerKosListPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 final kos = kosList[index];
                 final bool isApproved = kos['is_approved'] == true;
+                final String? photoUrl = kos['photo_url']?.toString();
 
                 return Container(
                   decoration: BoxDecoration(
@@ -1452,13 +1479,19 @@ class OwnerKosListPage extends StatelessWidget {
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                     leading: CircleAvatar(
+                      radius: 22,
                       backgroundColor: isApproved
                           ? const Color(0xFF9C5A1A)
                           : Colors.grey.shade300,
-                      child: const Icon(
-                        Icons.home_rounded,
-                        color: Colors.white,
-                      ),
+                      backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: (photoUrl == null || photoUrl.isEmpty)
+                          ? const Icon(
+                              Icons.home_rounded,
+                              color: Colors.white,
+                            )
+                          : null,
                     ),
                     title: Text(
                       kos['name'] ?? '-',

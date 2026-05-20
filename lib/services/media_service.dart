@@ -39,19 +39,23 @@ class MediaService {
     final photo = await pickImage(context);
     if (photo == null) return null;
 
-    final bytes = await photo.readAsBytes();
-    final uploaded = await uploadProfilePhoto(
-      userId: userId,
-      bytes: bytes,
-      originalFileName: photo.name,
-      filePrefix: filePrefix,
-    );
-    await upsertProfileImage(
-      userId: userId,
-      imageUrl: uploaded.publicUrl,
-      storagePath: uploaded.storagePath,
-    );
-    return uploaded.publicUrl;
+    try {
+      final bytes = await photo.readAsBytes();
+      final uploaded = await uploadProfilePhoto(
+        userId: userId,
+        bytes: bytes,
+        originalFileName: photo.name,
+        filePrefix: filePrefix,
+      );
+      await upsertProfileImage(
+        userId: userId,
+        imageUrl: uploaded.publicUrl,
+        storagePath: uploaded.storagePath,
+      );
+      return uploaded.publicUrl;
+    } catch (e) {
+      throw Exception(_friendlyStorageErrorMessage(e, kind: 'foto profil'));
+    }
   }
 
   static Future<String?> pickAndUploadKostPhoto(
@@ -62,19 +66,23 @@ class MediaService {
     final photo = await pickImage(context);
     if (photo == null) return null;
 
-    final bytes = await photo.readAsBytes();
-    final uploaded = await uploadKostPhoto(
-      kostId: kostId,
-      bytes: bytes,
-      originalFileName: photo.name,
-      filePrefix: filePrefix,
-    );
-    await upsertKostImage(
-      kostId: kostId,
-      imageUrl: uploaded.publicUrl,
-      storagePath: uploaded.storagePath,
-    );
-    return uploaded.publicUrl;
+    try {
+      final bytes = await photo.readAsBytes();
+      final uploaded = await uploadKostPhoto(
+        kostId: kostId,
+        bytes: bytes,
+        originalFileName: photo.name,
+        filePrefix: filePrefix,
+      );
+      await upsertKostImage(
+        kostId: kostId,
+        imageUrl: uploaded.publicUrl,
+        storagePath: uploaded.storagePath,
+      );
+      return uploaded.publicUrl;
+    } catch (e) {
+      throw Exception(_friendlyStorageErrorMessage(e, kind: 'foto kost'));
+    }
   }
 
   static Future<UploadedImage> uploadProfilePhoto({
@@ -208,6 +216,25 @@ class MediaService {
     required ImageSource source,
   }) async {
     try {
+      // Desktop tidak punya dukungan kamera langsung dari image_picker.
+      // Jika user memilih "Kamera" di desktop, fallback ke file picker.
+      if (!_supportsDirectCamera && source == ImageSource.camera) {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result == null || result.files.isEmpty) return null;
+
+        final file = result.files.first;
+        if (file.bytes == null) return null;
+        return XFile.fromData(
+          file.bytes!,
+          name: file.name,
+          mimeType: _guessMimeType(file.name),
+        );
+      }
+
       if (_shouldUseImagePicker) {
         return _picker.pickImage(
           source: source,
@@ -403,5 +430,16 @@ class MediaService {
       default:
         return 'image/jpeg';
     }
+  }
+
+  static String _friendlyStorageErrorMessage(Object error, {required String kind}) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('bucket not found')) {
+      return 'Gagal memperbarui $kind karena bucket storage `kostly-media` belum tersedia.';
+    }
+    if (raw.contains('row-level security') || raw.contains('permission')) {
+      return 'Gagal memperbarui $kind karena izin akses storage ditolak.';
+    }
+    return 'Gagal memperbarui $kind. Silakan coba lagi.';
   }
 }

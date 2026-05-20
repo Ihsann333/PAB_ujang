@@ -101,15 +101,17 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return AuthScreenShell(
-      title: "Hello!",
-      subtitle: "Selamat datang kembali di Kostly",
+      title: "Selamat Datang",
+      subtitle: "Masuk untuk melanjutkan pengelolaan kost di Kostly",
+      headerHeight: 260,
+      cardOverlap: 10,
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Login",
+              "Masuk",
               style: GoogleFonts.sora(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
@@ -118,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Masuk untuk lanjut kelola kost dan tagihanmu.",
+              "Gunakan akun Anda untuk mengakses dashboard dan pengingat tagihan.",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 color: AuthPalette.muted,
@@ -126,8 +128,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             AuthSectionCard(
-              title: "Masuk ke Akun",
-              subtitle: "Gunakan email dan password yang sudah terdaftar.",
+              title: "Akun Terdaftar",
+              subtitle: "Masukkan email dan kata sandi akun Anda.",
               child: Column(
                 children: [
                   _buildTextField(
@@ -147,7 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      "Lupa password? Hubungi admin.",
+                      "Lupa kata sandi? Hubungi admin kost.",
                       style: GoogleFonts.plusJakartaSans(
                         color: AuthPalette.primary,
                         fontSize: 12,
@@ -175,8 +177,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             AuthSectionCard(
-              title: "Buat Akun Baru",
-              subtitle: "Pilih jenis akun yang ingin Anda daftarkan.",
+              title: "Belum Punya Akun?",
+              subtitle: "Pilih jenis pendaftaran sesuai peran Anda.",
               child: Row(
                 children: [
                   Expanded(
@@ -201,7 +203,7 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 10),
             Center(
               child: Text(
-                "Belum punya akun? Pilih tipe registrasi di atas.",
+                "Registrasi dapat dilakukan sebagai penghuni atau owner.",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   color: AuthPalette.muted,

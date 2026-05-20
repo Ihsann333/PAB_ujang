@@ -26,6 +26,9 @@ class DetailKosPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? photoUrl = kos['photo_url']?.toString();
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFBFBFB),
       body: CustomScrollView(
@@ -48,7 +51,21 @@ class DetailKosPage extends StatelessWidget {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: const Color(0xFFEADBC8),
-                child: const Icon(Icons.apartment_rounded, size: 120, color: Color(0xFF9C5A1A)),
+                child: hasPhoto
+                    ? Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.apartment_rounded,
+                          size: 120,
+                          color: Color(0xFF9C5A1A),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.apartment_rounded,
+                        size: 120,
+                        color: Color(0xFF9C5A1A),
+                      ),
               ),
             ),
           ),

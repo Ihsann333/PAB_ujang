@@ -44,6 +44,32 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   // Ambil email dari Auth Supabase
   String get userEmail => supabase.auth.currentUser?.email ?? 'Email tidak ditemukan';
 
+  void _showNotice(
+    String message, {
+    Color backgroundColor = const Color(0xFF9C5A1A),
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: backgroundColor),
+    );
+  }
+
+  String _cleanError(Object error, {String fallback = 'Terjadi kesalahan.'}) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) return fallback;
+
+    final lowered = raw.toLowerCase();
+    if (lowered.contains('bucket storage `kostly-media` belum tersedia') ||
+        lowered.contains('bucket not found')) {
+      return 'Storage media belum aktif. Hubungi admin backend untuk membuat bucket `kostly-media` di Supabase Storage.';
+    }
+    if (lowered.contains('row-level security') || lowered.contains('permission')) {
+      return 'Akses ditolak oleh sistem storage. Periksa aturan izin (RLS) di Supabase.';
+    }
+
+    return raw;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -139,18 +165,12 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       if (photoUrl == null) return;
 
       await _fetchOwnerProfile();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Foto profil berhasil diperbarui.")),
-        );
-      }
+      _showNotice("Foto profil berhasil diperbarui.");
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal memperbarui foto profil: $e")),
-        );
-      }
+      _showNotice(
+        _cleanError(e, fallback: "Gagal memperbarui foto profil."),
+        backgroundColor: Colors.red,
+      );
     }
   }
 
@@ -197,18 +217,12 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
       if (photoUrl == null) return;
 
       await _fetchOwnerProfile();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Foto kost berhasil diperbarui.")),
-        );
-      }
+      _showNotice("Foto kost berhasil diperbarui.");
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal memperbarui foto kost: $e")),
-        );
-      }
+      _showNotice(
+        _cleanError(e, fallback: "Gagal memperbarui foto kost."),
+        backgroundColor: Colors.red,
+      );
     }
   }
 
@@ -273,8 +287,35 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
   }
 
   Future<void> _saveNewKost(StateSetter setModalState) async {
-    if (_nameCtrl.text.isEmpty || _addressCtrl.text.isEmpty || _priceCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mohon lengkapi data utama")));
+    final name = _nameCtrl.text.trim();
+    final address = _addressCtrl.text.trim();
+    final priceText = _priceCtrl.text.trim();
+    final slotsText = _slotsCtrl.text.trim();
+    final price = int.tryParse(priceText);
+    final slots = slotsText.isEmpty ? 0 : int.tryParse(slotsText);
+
+    if (name.isEmpty) {
+      _showNotice("Nama kost wajib diisi.", backgroundColor: Colors.orange);
+      return;
+    }
+    if (name.length < 3) {
+      _showNotice("Nama kost minimal 3 karakter.", backgroundColor: Colors.orange);
+      return;
+    }
+    if (address.isEmpty) {
+      _showNotice("Alamat kost wajib diisi.", backgroundColor: Colors.orange);
+      return;
+    }
+    if (priceText.isEmpty) {
+      _showNotice("Harga per bulan wajib diisi.", backgroundColor: Colors.orange);
+      return;
+    }
+    if (price == null || price <= 0) {
+      _showNotice("Harga per bulan harus berupa angka lebih dari 0.", backgroundColor: Colors.orange);
+      return;
+    }
+    if (slots == null || slots < 0) {
+      _showNotice("Total kamar harus berupa angka 0 atau lebih.", backgroundColor: Colors.orange);
       return;
     }
 
@@ -298,10 +339,10 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         supabase: supabase,
         basePayload: {
           'owner_id': supabase.auth.currentUser?.id,
-          'name': _nameCtrl.text.trim(),
-          'address': _addressCtrl.text.trim(),
-          'price': int.tryParse(_priceCtrl.text.trim()) ?? 0,
-          'slots': int.tryParse(_slotsCtrl.text.trim()) ?? 0,
+          'name': name,
+          'address': address,
+          'price': price,
+          'slots': slots,
           'include_electricity': _includeListrik,
           'include_water': _includeAir,
           'include_wifi': _includeWifi,
@@ -323,10 +364,8 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Unit berhasil diajukan ke admin!"), backgroundColor: Colors.green),
-        );
       }
+      _showNotice("Unit berhasil diajukan ke admin!", backgroundColor: Colors.green);
       await _fetchOwnerProfile();
       
       _nameCtrl.clear();
@@ -343,7 +382,10 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
         _includeWifi = false;
       });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red));
+      _showNotice(
+        _cleanError(e, fallback: "Gagal menyimpan unit kost."),
+        backgroundColor: Colors.red,
+      );
     } finally {
       if (mounted) setModalState(() => isSaving = false);
     }
@@ -876,6 +918,42 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 
+  Widget _buildQuickActionTile({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDF7F0),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: OwnerPalette.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: OwnerPalette.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: OwnerPalette.primaryDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- MAIN BUILD ---
 
   @override
@@ -972,6 +1050,24 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                                 ),
                               ),
                             ),
+                            if (ownerKosts.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  _buildQuickActionTile(
+                                    label: 'Foto Kost',
+                                    icon: Icons.photo_camera_back_outlined,
+                                    onTap: _updateKostPhoto,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _buildQuickActionTile(
+                                    label: 'Lokasi Kost',
+                                    icon: Icons.my_location_rounded,
+                                    onTap: _updateKostLocation,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -981,16 +1077,23 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                         subtitle: 'Ringkasan akun owner yang sedang aktif.',
                       ),
                       const SizedBox(height: 14),
-                      _buildProfileField(
-                        'Nama Owner',
-                        _resolveOwnerValue('full_name', fallback: 'Owner'),
-                      ),
-                      _buildProfileField('Email Pengguna', userEmail),
-                      _buildProfileField(
-                        'Password Akun',
-                        '••••••••',
-                        actionLabel: 'Ubah',
-                        onAction: _showChangePasswordDialog,
+                      OwnerSurfaceCard(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 2),
+                        child: Column(
+                          children: [
+                            _buildProfileField(
+                              'Nama Owner',
+                              _resolveOwnerValue('full_name', fallback: 'Owner'),
+                            ),
+                            _buildProfileField('Email Pengguna', userEmail),
+                            _buildProfileField(
+                              'Password Akun',
+                              '********',
+                              actionLabel: 'Ubah',
+                              onAction: _showChangePasswordDialog,
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const OwnerSectionHeader(
@@ -999,42 +1102,46 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
                             'Data unit pertama yang aktif ditampilkan untuk akses cepat.',
                       ),
                       const SizedBox(height: 14),
-                      _buildProfileField(
-                        'Jumlah Unit Kost',
-                        ownerKosts.length.toString(),
-                      ),
-                      _buildProfileField(
-                        'Nama Kost',
-                        _resolveFirstKostValue('name', fallback: 'Belum ada kost'),
-                      ),
-                      _buildProfileField(
-                        'Alamat Kost',
-                        _resolveFirstKostValue(
-                          'address',
-                          fallback: 'Belum ada kost',
+                      OwnerSurfaceCard(
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 2),
+                        child: Column(
+                          children: [
+                            _buildProfileField(
+                              'Jumlah Unit Kost',
+                              ownerKosts.length.toString(),
+                            ),
+                            _buildProfileField(
+                              'Nama Kost',
+                              _resolveFirstKostValue(
+                                'name',
+                                fallback: 'Belum ada kost',
+                              ),
+                            ),
+                            _buildProfileField(
+                              'Alamat Kost',
+                              _resolveFirstKostValue(
+                                'address',
+                                fallback: 'Belum ada kost',
+                              ),
+                            ),
+                            _buildProfileField(
+                              'Lokasi Kost',
+                              ownerKosts.isEmpty
+                                  ? 'Belum ada kost'
+                                  : (KostLocationService.hasLocation(
+                                          ownerKosts.first,
+                                        )
+                                        ? KostLocationService.coordinateLabelFromMap(
+                                            ownerKosts.first,
+                                          )
+                                        : 'Belum diatur'),
+                              actionLabel: ownerKosts.isEmpty ? null : 'Atur',
+                              onAction: ownerKosts.isEmpty
+                                  ? null
+                                  : _updateKostLocation,
+                            ),
+                          ],
                         ),
-                      ),
-                      _buildProfileField(
-                        'Lokasi Kost',
-                        ownerKosts.isEmpty
-                            ? 'Belum ada kost'
-                            : (KostLocationService.hasLocation(ownerKosts.first)
-                                  ? KostLocationService.coordinateLabelFromMap(
-                                      ownerKosts.first,
-                                    )
-                                  : 'Belum diatur'),
-                        actionLabel: ownerKosts.isEmpty ? null : 'Atur',
-                        onAction: ownerKosts.isEmpty ? null : _updateKostLocation,
-                      ),
-                      _buildProfileField(
-                        'Foto Kost',
-                        ownerKosts.isEmpty
-                            ? 'Belum ada kost'
-                            : (ownerKosts.first['photo_url'] != null
-                                  ? 'Sudah ada foto'
-                                  : 'Belum ada foto'),
-                        actionLabel: ownerKosts.isEmpty ? null : 'Ubah',
-                        onAction: ownerKosts.isEmpty ? null : _updateKostPhoto,
                       ),
                       const SizedBox(height: 8),
                       const OwnerSectionHeader(
@@ -1104,3 +1211,4 @@ class _OwnerProfilePageState extends State<OwnerProfilePage> {
     );
   }
 }
+

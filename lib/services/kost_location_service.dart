@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:geolocator/geolocator.dart';
@@ -43,11 +44,22 @@ class KostLocationService {
       );
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
-    );
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+        timeLimit: const Duration(seconds: 12),
+      );
+    } on TimeoutException {
+      position = await Geolocator.getLastKnownPosition();
+      if (position == null) {
+        throw Exception(
+          'Gagal mengambil lokasi (timeout). Coba aktifkan GPS lalu ulangi.',
+        );
+      }
+    }
 
     return KostLocationData(
       latitude: position.latitude,

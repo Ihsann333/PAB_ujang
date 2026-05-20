@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/admin_page/detail_kos.dart';
 import 'package:kostly_pa/pages/login_page.dart';
+import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
@@ -83,11 +84,16 @@ class _MonitorPageState extends State<MonitorPage> {
           .eq('is_approved', true)
           .order('created_at', ascending: false)
           .limit(3);
+      final top3WithImages = await MediaService.attachKostImages(
+        (top3 as List)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList(),
+      );
 
       setState(() {
         totalKos = (kosRes as List).length;
         totalOwner = (ownerRes as List).length;
-        top3Terbaru = top3 as List;
+        top3Terbaru = top3WithImages;
         isLoading = false;
       });
     } catch (e) {
@@ -495,12 +501,33 @@ class ListDataPage extends StatelessWidget {
       ),
       body: FutureBuilder(
         future: table == 'kosts'
-            ? supabase.from('kosts').select('*').eq('is_approved', true)
-            : supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('role', 'owner')
-                  .eq('is_approved', true),
+            ? () async {
+                final raw = await supabase
+                    .from('kosts')
+                    .select('*')
+                    .eq('is_approved', true);
+                return MediaService.attachKostImages(
+                  (raw as List)
+                      .map((item) => Map<String, dynamic>.from(item as Map))
+                      .toList(),
+                );
+              }()
+            : () async {
+                final raw = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', 'owner')
+                    .eq('is_approved', true);
+                final List<Map<String, dynamic>> owners = [];
+                for (final item in (raw as List)) {
+                  owners.add(
+                    await MediaService.attachProfileImage(
+                      Map<String, dynamic>.from(item as Map),
+                    ),
+                  );
+                }
+                return owners;
+              }(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -527,10 +554,26 @@ class ListDataPage extends StatelessWidget {
                   ),
                   leading: CircleAvatar(
                     backgroundColor: AdminPalette.background,
-                    child: Icon(
-                      table == 'kosts' ? Icons.home_work : Icons.person,
-                      color: const Color(0xFF9C5A1A),
-                    ),
+                    backgroundImage: table == 'kosts'
+                        ? null
+                        : ((item['profile_photo_url']?.toString().isNotEmpty ??
+                                  false)
+                              ? NetworkImage(
+                                  item['profile_photo_url'].toString(),
+                                )
+                              : null),
+                    child: table == 'kosts'
+                        ? const Icon(
+                            Icons.home_work,
+                            color: Color(0xFF9C5A1A),
+                          )
+                        : ((item['profile_photo_url']?.toString().isNotEmpty ??
+                                  false)
+                              ? null
+                              : const Icon(
+                                  Icons.person,
+                                  color: Color(0xFF9C5A1A),
+                                )),
                   ),
                   title: Text(
                     item['name'] ?? item['email'] ?? 'User',
@@ -587,6 +630,9 @@ class OwnerDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final supabase = SupabaseService.client;
+    final String? ownerPhotoUrl = owner['profile_photo_url']?.toString();
+    final bool hasOwnerPhoto =
+        ownerPhotoUrl != null && ownerPhotoUrl.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AdminPalette.background,
@@ -600,7 +646,17 @@ class OwnerDetailPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: FutureBuilder(
-        future: supabase.from('kosts').select('*').eq('owner_id', owner['id']),
+        future: () async {
+          final raw = await supabase
+              .from('kosts')
+              .select('*')
+              .eq('owner_id', owner['id']);
+          return MediaService.attachKostImages(
+            (raw as List)
+                .map((item) => Map<String, dynamic>.from(item as Map))
+                .toList(),
+          );
+        }(),
         builder: (context, snapshot) {
           final kos = snapshot.data as List? ?? [];
 
@@ -608,14 +664,19 @@ class OwnerDetailPage extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 50,
-                  backgroundColor: Color(0xFF9C5A1A),
-                  child: Icon(Icons.person, size: 60, color: Colors.white),
+                  backgroundColor: const Color(0xFF9C5A1A),
+                  backgroundImage: hasOwnerPhoto
+                      ? NetworkImage(ownerPhotoUrl)
+                      : null,
+                  child: hasOwnerPhoto
+                      ? null
+                      : const Icon(Icons.person, size: 60, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  owner['name'] ?? "Owner",
+                  owner['full_name'] ?? owner['name'] ?? "Owner",
                   style: _soraAdmin(fontSize: 24, fontWeight: FontWeight.w700),
                 ),
                 Text(

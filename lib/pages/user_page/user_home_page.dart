@@ -1254,35 +1254,41 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildTopHeader() {
+    final String? photoUrl = profileData?['profile_photo_url']?.toString();
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
     return UserPageHeader(
       title: "Halo, ${profileData?['full_name'] ?? 'User'}",
       subtitle: kost != null
           ? "Kelola informasi kost, pembayaran, dan pengumuman terbaru."
           : "Kamu belum terhubung ke kost. Gabung dulu untuk melihat detail unit dan tagihan.",
+      leading: CircleAvatar(
+        radius: 26,
+        backgroundColor: Colors.white.withOpacity(0.16),
+        backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+        child: !hasPhoto
+            ? const Icon(Icons.person, color: Colors.white, size: 24)
+            : null,
+      ),
       trailing: InkWell(
         onTap: _showJoinKostDialog,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.white.withOpacity(0.18)),
           ),
-          child: Column(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white.withOpacity(0.16),
-                backgroundImage: profileData?['profile_photo_url'] != null
-                    ? NetworkImage(profileData!['profile_photo_url'].toString())
-                    : null,
-                child: profileData?['profile_photo_url'] == null
-                    ? const Icon(Icons.person, color: Colors.white, size: 18)
-                    : null,
+              const Icon(
+                Icons.add_home_work_rounded,
+                color: Colors.white,
+                size: 16,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(width: 6),
               Text(
                 "Daftar Kost",
                 style: GoogleFonts.plusJakartaSans(
