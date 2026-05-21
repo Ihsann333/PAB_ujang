@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kostly_pa/pages/admin_page/admin_ui.dart';
 import 'package:kostly_pa/pages/login_page.dart';
 import 'package:kostly_pa/services/kost_location_service.dart';
+import 'package:kostly_pa/services/media_service.dart';
 import 'package:kostly_pa/services/notification_service.dart';
 import 'package:kostly_pa/services/supabase_service.dart';
 
@@ -103,7 +104,9 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
       for (var owner in pendingOwners) {
         final oId = owner['id'].toString();
-        ownerMap[oId] = Map<String, dynamic>.from(owner);
+        ownerMap[oId] = await MediaService.attachProfileImage(
+          Map<String, dynamic>.from(owner),
+        );
         ownerMap[oId]!['kosts'] = [];
       }
 
@@ -111,7 +114,9 @@ class _ApprovalPageState extends State<ApprovalPage> {
         final oId = kost['owner_id'].toString();
         // Jika owner-nya sudah ada di list pending, tambahkan kos ke dalamnya
         if (ownerMap.containsKey(oId)) {
-          ownerMap[oId]!['kosts'].add(Map<String, dynamic>.from(kost));
+          ownerMap[oId]!['kosts'].add(
+            await MediaService.attachKostImage(Map<String, dynamic>.from(kost)),
+          );
         } else {
           // Jika owner-nya sudah approved tapi unit kosnya belum,
           // kita tetap tampilkan owner tersebut agar unitnya bisa di-approve
@@ -120,8 +125,12 @@ class _ApprovalPageState extends State<ApprovalPage> {
               .select()
               .eq('id', oId)
               .single();
-          ownerMap[oId] = Map<String, dynamic>.from(ownerData);
-          ownerMap[oId]!['kosts'] = [Map<String, dynamic>.from(kost)];
+          ownerMap[oId] = await MediaService.attachProfileImage(
+            Map<String, dynamic>.from(ownerData),
+          );
+          ownerMap[oId]!['kosts'] = [
+            await MediaService.attachKostImage(Map<String, dynamic>.from(kost)),
+          ];
         }
       }
 
@@ -440,6 +449,15 @@ class _ApprovalPageState extends State<ApprovalPage> {
         ],
       ),
       child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFFF2E8DA),
+          backgroundImage: (item['profile_photo_url']?.toString().isNotEmpty ?? false)
+              ? NetworkImage(item['profile_photo_url'].toString())
+              : null,
+          child: (item['profile_photo_url']?.toString().isNotEmpty ?? false)
+              ? null
+              : const Icon(Icons.person, color: Color(0xFF9C5A1A)),
+        ),
         title: Text(
           item['full_name'] ?? item['email'],
           style: _jakartaApproval(
@@ -520,6 +538,19 @@ class _ApprovalPageState extends State<ApprovalPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (k['photo_url']?.toString().isNotEmpty ?? false) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                k['photo_url'].toString(),
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox(),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Text(
             k['name'] ?? 'Unit Kost',
             style: _jakartaApproval(

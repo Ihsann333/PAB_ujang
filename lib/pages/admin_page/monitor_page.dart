@@ -396,7 +396,15 @@ class _MonitorPageState extends State<MonitorPage> {
           context,
           MaterialPageRoute(builder: (_) => DetailKosPage(kos: kos)),
         ),
-        leading: const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
+        leading: CircleAvatar(
+          backgroundColor: AdminPalette.background,
+          backgroundImage: (kos['photo_url']?.toString().isNotEmpty ?? false)
+              ? NetworkImage(kos['photo_url'].toString())
+              : null,
+          child: (kos['photo_url']?.toString().isNotEmpty ?? false)
+              ? null
+              : const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
+        ),
         title: Text(
           kos['name'] ?? "-",
           style: _jakartaAdmin(fontWeight: FontWeight.w700),
@@ -555,25 +563,25 @@ class ListDataPage extends StatelessWidget {
                   leading: CircleAvatar(
                     backgroundColor: AdminPalette.background,
                     backgroundImage: table == 'kosts'
-                        ? null
-                        : ((item['profile_photo_url']?.toString().isNotEmpty ??
-                                  false)
-                              ? NetworkImage(
-                                  item['profile_photo_url'].toString(),
-                                )
-                              : null),
+                        ? ((item['photo_url']?.toString().isNotEmpty ?? false)
+                            ? NetworkImage(item['photo_url'].toString())
+                            : null)
+                        : ((item['profile_photo_url']?.toString().isNotEmpty ?? false)
+                            ? NetworkImage(item['profile_photo_url'].toString())
+                            : null),
                     child: table == 'kosts'
-                        ? const Icon(
-                            Icons.home_work,
-                            color: Color(0xFF9C5A1A),
-                          )
-                        : ((item['profile_photo_url']?.toString().isNotEmpty ??
-                                  false)
-                              ? null
-                              : const Icon(
-                                  Icons.person,
-                                  color: Color(0xFF9C5A1A),
-                                )),
+                        ? ((item['photo_url']?.toString().isNotEmpty ?? false)
+                            ? null
+                            : const Icon(
+                                Icons.home_work,
+                                color: Color(0xFF9C5A1A),
+                              ))
+                        : ((item['profile_photo_url']?.toString().isNotEmpty ?? false)
+                            ? null
+                            : const Icon(
+                                Icons.person,
+                                color: Color(0xFF9C5A1A),
+                              )),
                   ),
                   title: Text(
                     item['name'] ?? item['email'] ?? 'User',
@@ -712,6 +720,15 @@ class OwnerDetailPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AdminPalette.background,
+                          backgroundImage: (k['photo_url']?.toString().isNotEmpty ?? false)
+                              ? NetworkImage(k['photo_url'].toString())
+                              : null,
+                          child: (k['photo_url']?.toString().isNotEmpty ?? false)
+                              ? null
+                              : const Icon(Icons.home_work, color: Color(0xFF9C5A1A)),
+                        ),
                         title: Text(
                           k['name'],
                           style: _jakartaAdmin(fontWeight: FontWeight.w600),

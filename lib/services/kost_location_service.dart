@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -65,6 +66,41 @@ class KostLocationService {
       latitude: position.latitude,
       longitude: position.longitude,
     );
+  }
+
+  static Future<String> getCurrentAddressName() async {
+    try {
+      final locationData = await getCurrentLocation();
+      final placemarks = await placemarkFromCoordinates(
+        locationData.latitude,
+        locationData.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final parts = <String>[];
+
+        // Kelurahan / Desa / Area Lokal
+        if (place.subLocality != null && place.subLocality!.isNotEmpty) {
+          parts.add(place.subLocality!);
+        }
+        // Nama jalan / nama tempat
+        if (place.street != null && place.street!.isNotEmpty) {
+          parts.add(place.street!);
+        }
+        // Kecamatan / Kota / Kabupaten
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          parts.add(place.locality!);
+        }
+
+        if (parts.isNotEmpty) {
+          return parts.join(', ');
+        }
+      }
+    } catch (e) {
+      print("ERROR REVERSE GEOCODING: $e");
+    }
+    return "Lokasi tidak dikenal";
   }
 
   static double? readLatitude(Map? data) {

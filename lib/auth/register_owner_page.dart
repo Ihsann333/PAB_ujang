@@ -406,9 +406,15 @@ class _RegisterOwnerPageState extends State<RegisterOwnerPage> {
   Future<void> _captureKostLocation() async {
     try {
       final location = await KostLocationService.getCurrentLocation();
+      final addressName = await KostLocationService.getCurrentAddressName();
       if (!mounted) return;
-      setState(() => _kostLocation = location);
-      _showNotice('Lokasi kost berhasil diambil dari perangkat.');
+      setState(() {
+        _kostLocation = location;
+        if (addressName.isNotEmpty && addressName != "Lokasi tidak dikenal") {
+          addressController.text = addressName;
+        }
+      });
+      _showNotice('Lokasi kost dan alamat berhasil dideteksi otomatis.');
     } catch (e) {
       _showNotice(e.toString().replaceFirst('Exception: ', ''), isError: true);
     }
